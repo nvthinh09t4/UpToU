@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UpToU.API/UpToU.API.csproj" />
+    <Project Path="src/UpToU.Core/UpToU.Core.csproj" />
+    <Project Path="src/UpToU.Infrastructure/UpToU.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UpToU.IntegrationTests/UpToU.IntegrationTests.csproj" />
+    <Project Path="tests/UpToU.UnitTests/UpToU.UnitTests.csproj" />
+  </Folder>
+</Solution>

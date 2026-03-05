@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/hashgen)",
+      "Bash(/tmp/hashgen/Program.cs:*)",
+      "Bash(__NEW_LINE_aecbd19a4271f4f4__ cat)",
+      "Bash(/tmp/hashgen/hashgen.csproj:*)",
+      "Bash(__NEW_LINE_aecbd19a4271f4f4__ cd /tmp/hashgen)",
+      "Bash(dotnet run)",
+      "Bash(mkdir -p \"C:/temp/hashgen\")",
+      "Bash(\"C:/temp/hashgen/Program.cs\":*)",
+      "Bash(__NEW_LINE_1fb1495a19b335c1__ cat)",
+      "Bash(\"C:/temp/hashgen/hashgen.csproj\":*)",
+      "Bash(__NEW_LINE_1fb1495a19b335c1__ cd \"C:/temp/hashgen\")"
+    ]
+  }
+}
