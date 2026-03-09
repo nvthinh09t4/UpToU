@@ -1,12 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using UpToU.Core.Commands.Auth;
 using UpToU.Core.DTOs;
 using UpToU.Core.Entities;
 using UpToU.Core.Interfaces;
 using UpToU.Core.Models;
+using UpToU.Infrastructure.Data;
 
 namespace UpToU.Infrastructure.Handlers.Auth;
 
@@ -16,17 +18,20 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Us
     private readonly IEmailService _emailService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<RegisterCommandHandler> _logger;
+    private readonly ApplicationDbContext _db;
 
     public RegisterCommandHandler(
         UserManager<ApplicationUser> userManager,
         IEmailService emailService,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<RegisterCommandHandler> logger)
+        ILogger<RegisterCommandHandler> logger,
+        ApplicationDbContext db)
     {
         _userManager = userManager;
         _emailService = emailService;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+        _db = db;
     }
 
     public async Task<Result<UserDto>> Handle(RegisterCommand request, CancellationToken ct)
@@ -35,12 +40,15 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Us
         if (existingUser is not null)
             return Result<UserDto>.Conflict("An account with this email already exists.");
 
+        var mentionHandle = await BuildUniqueMentionHandleAsync(request.FirstName, request.LastName, ct);
+
         var user = new ApplicationUser
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email,
             UserName = request.Email,
+            MentionHandle = mentionHandle,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -70,5 +78,19 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Us
         var roles = await _userManager.GetRolesAsync(user);
         var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles);
         return Result<UserDto>.Success(userDto);
+    }
+
+    private async Task<string> BuildUniqueMentionHandleAsync(string firstName, string lastName, CancellationToken ct)
+    {
+        var baseHandle = $"{firstName.ToLower().Replace(" ", "")}.{lastName.ToLower().Replace(" ", "")}";
+        var handle = baseHandle;
+        var counter = 1;
+
+        while (await _db.Users.AnyAsync(u => u.MentionHandle == handle, ct))
+        {
+            handle = $"{baseHandle}{++counter}";
+        }
+
+        return handle;
     }
 }

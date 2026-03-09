@@ -16,6 +16,14 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
                .HasMaxLength(100)
                .IsRequired();
 
+        builder.Property(u => u.MentionHandle)
+               .HasMaxLength(100)
+               .IsRequired(false);
+
+        builder.HasIndex(u => u.MentionHandle)
+               .IsUnique()
+               .HasFilter("[MentionHandle] IS NOT NULL");
+
         builder.HasMany(u => u.RefreshTokens)
                .WithOne(rt => rt.User)
                .HasForeignKey(rt => rt.UserId)

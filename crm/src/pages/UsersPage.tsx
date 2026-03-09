@@ -123,11 +123,11 @@ export default function UsersPage() {
       headerName: 'User',
       flex: 1.5,
       renderCell: ({ row }) => (
-        <Box className="flex items-center gap-3 h-full">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar sx={{ width: 32, height: 32, fontSize: 12 }}>{initials(row)}</Avatar>
-          <Box>
-            <Typography variant="body2" fontWeight={600}>{row.firstName} {row.lastName}</Typography>
-            <Typography variant="caption" color="text.secondary">{row.email}</Typography>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" fontWeight={600} noWrap>{row.firstName} {row.lastName}</Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>{row.email}</Typography>
           </Box>
         </Box>
       ),
@@ -137,7 +137,7 @@ export default function UsersPage() {
       headerName: 'Roles',
       flex: 1,
       renderCell: ({ row }) => (
-        <Box className="flex flex-wrap gap-1 items-center h-full">
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
           {row.roles.map((r) => <Chip key={r} label={r} size="small" color="primary" variant="outlined" />)}
         </Box>
       ),
@@ -183,7 +183,7 @@ export default function UsersPage() {
       width: 90,
       sortable: false,
       renderCell: ({ row }) => (
-        <Box className="flex items-center h-full">
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Tooltip title="Edit">
             <IconButton size="small" onClick={() => setEditUser(row)}><EditIcon fontSize="small" /></IconButton>
           </Tooltip>

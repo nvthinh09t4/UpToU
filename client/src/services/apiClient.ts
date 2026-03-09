@@ -34,9 +34,9 @@ const processQueue = (error: unknown, token: string | null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _skipRetry?: boolean };
 
-    if (error.response?.status !== 401 || original._retry) {
+    if (error.response?.status !== 401 || original._retry || original._skipRetry) {
       return Promise.reject(error);
     }
 

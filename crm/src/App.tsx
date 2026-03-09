@@ -8,6 +8,7 @@ import DashboardPage from '@/pages/DashboardPage'
 import CategoriesPage from '@/pages/CategoriesPage'
 import RolesPage from '@/pages/RolesPage'
 import UsersPage from '@/pages/UsersPage'
+import StoriesPage from '@/pages/StoriesPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/users" element={<UsersPage />} />
               <Route path="/roles" element={<RolesPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/stories" element={<StoriesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
