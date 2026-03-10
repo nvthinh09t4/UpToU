@@ -5,6 +5,7 @@ import {
   List, ListItemButton, ListItemIcon, ListItemText,
   Menu, MenuItem, Toolbar, Tooltip, Typography,
 } from '@mui/material'
+import ArticleIcon from '@mui/icons-material/Article'
 import CategoryIcon from '@mui/icons-material/Category'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import GroupsIcon from '@mui/icons-material/Groups'
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Users', path: '/users', icon: <PeopleIcon /> },
   { label: 'Roles', path: '/roles', icon: <GroupsIcon /> },
   { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
+  { label: 'Stories', path: '/stories', icon: <ArticleIcon /> },
 ]
 
 export default function AppLayout() {

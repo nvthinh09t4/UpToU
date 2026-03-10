@@ -188,10 +188,10 @@ export default function CategoriesPage() {
       headerName: 'Title',
       flex: 1.5,
       renderCell: ({ row }) => (
-        <Box className="flex flex-col justify-center h-full">
-          <Typography variant="body2" fontWeight={600}>{row.title}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" fontWeight={600} noWrap>{row.title}</Typography>
           {row.parentId !== null && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" noWrap>
               Child of: {allFlat.find((c) => c.id === row.parentId)?.title ?? `#${row.parentId}`}
             </Typography>
           )}
@@ -247,7 +247,7 @@ export default function CategoriesPage() {
       width: 90,
       sortable: false,
       renderCell: ({ row }) => (
-        <Box className="flex items-center h-full">
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Tooltip title="Edit">
             <IconButton size="small" onClick={() => { setEditing(row); setDialogOpen(true) }}>
               <EditIcon fontSize="small" />

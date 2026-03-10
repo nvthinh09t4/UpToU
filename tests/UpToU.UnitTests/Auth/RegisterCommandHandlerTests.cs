@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Moq;
 using UpToU.Core.Commands.Auth;
 using UpToU.Core.Entities;
@@ -14,6 +15,7 @@ public class RegisterCommandHandlerTests
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
+    private readonly Mock<ILogger<RegisterCommandHandler>> _loggerMock;
 
     public RegisterCommandHandlerTests()
     {
@@ -28,10 +30,12 @@ public class RegisterCommandHandlerTests
         httpContext.Request.Scheme = "https";
         httpContext.Request.Host = new HostString("localhost", 5000);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContext);
+
+        _loggerMock = new Mock<ILogger<RegisterCommandHandler>>();
     }
 
     private RegisterCommandHandler CreateHandler() =>
-        new(_userManagerMock.Object, _emailServiceMock.Object, _httpContextAccessorMock.Object);
+        new(_userManagerMock.Object, _emailServiceMock.Object, _httpContextAccessorMock.Object, _loggerMock.Object);
 
     [Fact]
     public async Task Handle_WhenEmailAlreadyExists_ReturnsConflict()

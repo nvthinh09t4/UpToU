@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { NotificationBell } from '../components/notifications/NotificationBell';
+import { useAuthStore } from '../store/authStore';
 import {
   CheckCircle,
   Users,
@@ -84,6 +86,8 @@ const TESTIMONIALS = [
 ];
 
 export function HomePage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -95,9 +99,15 @@ export function HomePage() {
             <a href="#testimonials" className="hover:text-foreground transition-colors">Testimonials</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </nav>
-          <Link to="/login">
-            <Button size="sm">Sign In</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <NotificationBell />
+            ) : (
+              <Link to="/login">
+                <Button size="sm">Sign In</Button>
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
