@@ -17,7 +17,8 @@ internal static class StoryMapper
         bool publishedRevisionOnly = false,
         int upvoteCount = 0,
         int downvoteCount = 0,
-        string? currentUserVote = null)
+        string? currentUserVote = null,
+        bool isBookmarked = false)
     {
         var latestDetail = publishedRevisionOnly
             ? s.StoryDetails.Where(d => d.IsPublish).OrderByDescending(d => d.Revision).FirstOrDefault()
@@ -25,7 +26,7 @@ internal static class StoryMapper
 
         return new StoryDto(
             s.Id, s.Title, s.Slug, s.Description, s.Excerpt, s.CoverImageUrl,
-            s.AuthorName, s.IsFeatured, s.PublishDate, s.IsPublish, s.IsDeleted,
+            s.AuthorName, s.IsFeatured, s.PublishDate, s.IsPublish, s.IsDeleted, s.StoryType,
             s.CategoryId, s.Category?.Title ?? string.Empty,
             s.CreatedOn, s.ModifiedOn, s.CreatedBy, s.ModifiedBy,
             s.Tags.Select(t => new TagDto(t.Id, t.Name)).ToList(),
@@ -33,7 +34,8 @@ internal static class StoryMapper
             s.ViewCount,
             upvoteCount,
             downvoteCount,
-            currentUserVote
+            currentUserVote,
+            isBookmarked
         );
     }
 }

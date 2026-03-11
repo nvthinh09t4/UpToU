@@ -9,6 +9,10 @@ import CategoriesPage from '@/pages/CategoriesPage'
 import RolesPage from '@/pages/RolesPage'
 import UsersPage from '@/pages/UsersPage'
 import StoriesPage from '@/pages/StoriesPage'
+import ReportsPage from '@/pages/ReportsPage'
+import JobsPage from '@/pages/JobsPage'
+import RewardsAdminPage from '@/pages/RewardsAdminPage'
+import InteractiveStoryEditorPage from '@/pages/InteractiveStoryEditorPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -43,6 +47,10 @@ export default function App() {
               <Route path="/roles" element={<RolesPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/stories" element={<StoriesPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/rewards" element={<RewardsAdminPage />} />
+              <Route path="/stories/:storyId/nodes" element={<InteractiveStoryEditorPage />} />
+              <Route path="/jobs" element={<JobsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

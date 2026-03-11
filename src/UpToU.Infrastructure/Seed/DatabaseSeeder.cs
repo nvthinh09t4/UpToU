@@ -15,6 +15,7 @@ public static class DatabaseSeeder
         await SeedRolesAndAdminAsync(userManager, roleManager);
         var categories = await SeedCategoriesAsync(db);
         await SeedTagsAndStoriesAsync(db, categories);
+        await SeedInteractiveStoriesAsync(db, categories);
     }
 
     private static async Task SeedRolesAndAdminAsync(
@@ -525,6 +526,250 @@ public static class DatabaseSeeder
         };
 
         db.Stories.AddRange(stories);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedInteractiveStoriesAsync(ApplicationDbContext db, List<Category> categories)
+    {
+        if (await db.Stories.IgnoreQueryFilters().AnyAsync(s => s.StoryType == "Interactive"))
+            return;
+
+        var now = DateTime.UtcNow;
+        const string seededBy = "system";
+
+        Category GetCat(string title) => categories.First(c => c.Title == title);
+
+        // ── Story 1: The Washing Machine Dilemma ─────────────────────────────
+
+        var wm1 = new StoryNode
+        {
+            Question = "Your old washing machine just gave up. Laundry is piling up. What's your first move?",
+            QuestionSubtitle = "Every decision starts somewhere.",
+            IsStart = true, BackgroundColor = "#1e3a5f", AnimationType = "fade", SortOrder = 0,
+        };
+        var wm2 = new StoryNode
+        {
+            Question = "You're deep in a review rabbit hole. Top-load vs front-load. RPM counts. Energy ratings. What do you focus on?",
+            QuestionSubtitle = "Beware the rabbit hole...",
+            BackgroundColor = "#0d2137", AnimationType = "slide-left", SortOrder = 1,
+        };
+        var wm3 = new StoryNode
+        {
+            Question = "The salesperson steers you toward a $1,200 front-loader. 'It's our bestseller — on sale today only.' What do you do?",
+            QuestionSubtitle = "Sales pressure is real.",
+            BackgroundColor = "#4a1a1a", AnimationType = "zoom", SortOrder = 2,
+        };
+        var wm4 = new StoryNode
+        {
+            Question = "Your neighbor loves their Samsung. Your cousin had nothing but trouble with theirs. Mixed signals!",
+            QuestionSubtitle = "Word of mouth cuts both ways.",
+            BackgroundColor = "#1a3a1a", AnimationType = "fade", SortOrder = 3,
+        };
+        var wm5 = new StoryNode
+        {
+            Question = "You found a reliable mid-range model at $650 — 4.2 stars with 2,000+ reviews. What now?",
+            QuestionSubtitle = "Good enough is sometimes perfect.",
+            BackgroundColor = "#2a2a4a", AnimationType = "slide-left", SortOrder = 4,
+        };
+        var wm6 = new StoryNode
+        {
+            Question = "The Energy Star model costs $300 more but saves ~$85/year on electricity. Pays off in 3.5 years.",
+            QuestionSubtitle = "Short-term cost vs long-term saving.",
+            BackgroundColor = "#1a4a2a", AnimationType = "fade", SortOrder = 5,
+        };
+        var wm7 = new StoryNode
+        {
+            Question = "A trusted brand with a 5-year warranty and excellent service record. It's $800.",
+            QuestionSubtitle = "Sometimes paying more is paying less.",
+            BackgroundColor = "#2a1a4a", AnimationType = "zoom", SortOrder = 6,
+        };
+
+        wm1.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Research online first — read reviews and compare specs", PointsAwarded = 10, Color = "#2563eb", SortOrder = 0, NextNode = wm2 },
+            new() { Text = "Head straight to the appliance store", PointsAwarded = 5, Color = "#7c3aed", SortOrder = 1, NextNode = wm3 },
+            new() { Text = "Ask friends and family for recommendations", PointsAwarded = 8, Color = "#059669", SortOrder = 2, NextNode = wm4 },
+        };
+        wm2.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Price vs. reliability — I want the best value", PointsAwarded = 15, Color = "#2563eb", SortOrder = 0, NextNode = wm5 },
+            new() { Text = "Energy Star ratings — I want lower bills long-term", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = wm6 },
+            new() { Text = "Brand reputation — I'll stick with a trusted name", PointsAwarded = 10, Color = "#7c3aed", SortOrder = 2, NextNode = wm7 },
+            new() { Text = "Honestly overwhelmed — close the laptop and take a walk", PointsAwarded = 2, Color = "#6b7280", SortOrder = 3, NextNodeId = null },
+        };
+        wm3.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Politely ask to see mid-range options instead", PointsAwarded = 12, Color = "#2563eb", SortOrder = 0, NextNode = wm5 },
+            new() { Text = "Ask for the full spec sheet and compare quietly", PointsAwarded = 15, Color = "#059669", SortOrder = 1, NextNode = wm6 },
+            new() { Text = "The salesperson is convincing… add it to cart on impulse", PointsAwarded = 5, Color = "#dc2626", SortOrder = 2, NextNodeId = null },
+        };
+        wm4.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Cross-reference both experiences with professional reviews", PointsAwarded = 10, Color = "#2563eb", SortOrder = 0, NextNode = wm2 },
+            new() { Text = "Trust the neighbor — their laundry always looks great", PointsAwarded = 8, Color = "#059669", SortOrder = 1, NextNode = wm7 },
+            new() { Text = "Pick a totally different brand and avoid the debate", PointsAwarded = 8, Color = "#7c3aed", SortOrder = 2, NextNode = wm5 },
+        };
+        wm5.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Check three more sites — find it $80 cheaper with free installation", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "Add to cart immediately — this is the one", PointsAwarded = 15, Color = "#2563eb", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Wait two months for the holiday sale", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 2, NextNodeId = null },
+        };
+        wm6.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Worth it — I plan to use this machine for 10+ years", PointsAwarded = 25, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "The upfront cost is too much — look for something cheaper", PointsAwarded = 5, Color = "#f59e0b", SortOrder = 1, NextNode = wm5 },
+        };
+        wm7.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Buy it — peace of mind has a price and it's worth it", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "Negotiate a discount or extended warranty before buying", PointsAwarded = 22, Color = "#2563eb", SortOrder = 1, NextNodeId = null },
+        };
+
+        var story1Detail = new StoryDetail
+        {
+            Revision = 1, IsPublish = true,
+            SavePath = "interactive/real-life/washing-machine-dilemma",
+            EffectiveDate = now.AddDays(-1),
+            WordCount = 0, ScoreWeight = 1.3m,
+            CreatedOn = now, CreatedBy = seededBy,
+            StoryNodes = new List<StoryNode> { wm1, wm2, wm3, wm4, wm5, wm6, wm7 },
+        };
+
+        var story1 = new Story
+        {
+            Title = "The Washing Machine Dilemma",
+            Slug = "washing-machine-dilemma",
+            Excerpt = "Your machine just broke. Navigate salesperson pressure, spec overload, and budget decisions — can you find the right one without losing your mind?",
+            Description = "An interactive journey through the surprisingly emotional process of buying a new washing machine. Every choice you make shapes the outcome.",
+            CoverImageUrl = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
+            AuthorName = "UpToU Editorial",
+            StoryType = "Interactive",
+            CategoryId = GetCat("Real Life").Id,
+            PublishDate = now, IsPublish = true,
+            CreatedOn = now, CreatedBy = seededBy,
+            StoryDetails = new List<StoryDetail> { story1Detail },
+        };
+
+        // ── Story 2: Game or Learn? A Lazy Day Decision ───────────────────────
+
+        var ld1 = new StoryNode
+        {
+            Question = "It's Saturday. No plans. The couch is calling. What does your gut say?",
+            QuestionSubtitle = "There's no wrong answer. Or is there?",
+            IsStart = true, BackgroundColor = "#1a1a2e", AnimationType = "fade", SortOrder = 0,
+        };
+        var ld2 = new StoryNode
+        {
+            Question = "Gaming it is! What kind of gaming mood are you in today?",
+            BackgroundColor = "#0d1b2a", AnimationType = "slide-left", SortOrder = 1,
+        };
+        var ld3 = new StoryNode
+        {
+            Question = "You chose learning. But what kind of learning actually sounds appealing right now?",
+            BackgroundColor = "#1a2e1a", AnimationType = "zoom", SortOrder = 2,
+        };
+        var ld4 = new StoryNode
+        {
+            Question = "You flip a coin. It lands on LEARN. Your immediate gut reaction?",
+            QuestionSubtitle = "Your gut knows what you really want.",
+            BackgroundColor = "#2e1a2e", AnimationType = "fade", SortOrder = 3,
+        };
+        var ld5 = new StoryNode
+        {
+            Question = "Three hours of competitive matches later. How's it going?",
+            BackgroundColor = "#0d0d1a", AnimationType = "slide-left", SortOrder = 4,
+        };
+        var ld6 = new StoryNode
+        {
+            Question = "You found an indie game with gorgeous art and a calm vibe. Three hours pass like nothing.",
+            BackgroundColor = "#1a1a0d", AnimationType = "fade", SortOrder = 5,
+        };
+        var ld7 = new StoryNode
+        {
+            Question = "You've been learning for 90 minutes. It's harder than expected. How are you doing?",
+            BackgroundColor = "#0d2e1a", AnimationType = "zoom", SortOrder = 6,
+        };
+        var ld8 = new StoryNode
+        {
+            Question = "You fell into a Wikipedia spiral: Roman aqueducts → medieval siege engines → modern water infrastructure.",
+            QuestionSubtitle = "One hour in. Still going strong.",
+            BackgroundColor = "#2e1a0d", AnimationType = "slide-left", SortOrder = 7,
+        };
+
+        ld1.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Games. I just want to relax and have fun", PointsAwarded = 8, Color = "#7c3aed", SortOrder = 0, NextNode = ld2 },
+            new() { Text = "Maybe I should do something productive...", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = ld3 },
+            new() { Text = "I genuinely can't decide between gaming and learning", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 2, NextNode = ld4 },
+        };
+        ld2.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Something competitive — ranked matches, pure adrenaline", PointsAwarded = 8, Color = "#dc2626", SortOrder = 0, NextNode = ld5 },
+            new() { Text = "Something relaxing — chill indie or casual puzzle game", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = ld6 },
+            new() { Text = "Couch co-op with a friend or partner", PointsAwarded = 15, Color = "#2563eb", SortOrder = 2, NextNodeId = null },
+        };
+        ld3.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "A practical skill — coding, cooking, woodworking, or design", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNode = ld7 },
+            new() { Text = "Something purely fascinating — history, science, philosophy", PointsAwarded = 18, Color = "#2563eb", SortOrder = 1, NextNode = ld8 },
+            new() { Text = "A new language — open Duolingo for the first time in months", PointsAwarded = 15, Color = "#f59e0b", SortOrder = 2, NextNodeId = null },
+        };
+        ld4.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Relieved! Today's the day I learn something new", PointsAwarded = 18, Color = "#059669", SortOrder = 0, NextNode = ld3 },
+            new() { Text = "Disappointed — I clearly wanted to game all along", PointsAwarded = 8, Color = "#dc2626", SortOrder = 1, NextNode = ld2 },
+            new() { Text = "Ignore the coin: 1 hour learning, then gaming as reward", PointsAwarded = 22, Color = "#7c3aed", SortOrder = 2, NextNodeId = null },
+        };
+        ld5.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "On a winning streak! Ranked up twice. Totally worth it", PointsAwarded = 15, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "Lost 6 in a row. Frustrated, but somehow still here...", PointsAwarded = 5, Color = "#dc2626", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Took a break and accidentally started a documentary", PointsAwarded = 18, Color = "#2563eb", SortOrder = 2, NextNode = ld8 },
+        };
+        ld6.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Finished the whole game. Deeply satisfied day", PointsAwarded = 18, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "Started seriously thinking about making my own indie game", PointsAwarded = 22, Color = "#7c3aed", SortOrder = 1, NextNodeId = null },
+        };
+        ld7.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Built something small that actually works. Best feeling ever!", PointsAwarded = 25, Color = "#059669", SortOrder = 0, NextNodeId = null },
+            new() { Text = "Closed the tutorial after 30 min. It'll take more than one day", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Made real progress — reward myself with gaming time", PointsAwarded = 20, Color = "#2563eb", SortOrder = 2, NextNode = ld2 },
+        };
+        ld8.Answers = new List<StoryNodeAnswer>
+        {
+            new() { Text = "Four hours in — now I know more about Roman aqueducts than most archaeologists", PointsAwarded = 22, Color = "#2563eb", SortOrder = 0, NextNodeId = null },
+            new() { Text = "It sparked a creative project I immediately started sketching out", PointsAwarded = 25, Color = "#7c3aed", SortOrder = 1, NextNodeId = null },
+        };
+
+        var story2Detail = new StoryDetail
+        {
+            Revision = 1, IsPublish = true,
+            SavePath = "interactive/self-improvement/lazy-day-decision",
+            EffectiveDate = now,
+            WordCount = 0, ScoreWeight = 1.2m,
+            CreatedOn = now, CreatedBy = seededBy,
+            StoryNodes = new List<StoryNode> { ld1, ld2, ld3, ld4, ld5, ld6, ld7, ld8 },
+        };
+
+        var story2 = new Story
+        {
+            Title = "Game or Learn? A Lazy Day Decision",
+            Slug = "game-or-learn-lazy-day",
+            Excerpt = "It's Saturday. No plans. Do you fire up a game or push yourself to learn something? Every path reveals something about how you really spend your free time.",
+            Description = "An interactive story exploring the internal battle between rest, entertainment, and growth on a free day. Follow your instincts and see where you end up.",
+            CoverImageUrl = "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1200&q=80",
+            AuthorName = "UpToU Editorial",
+            StoryType = "Interactive",
+            CategoryId = GetCat("Mindset").Id,
+            PublishDate = now, IsPublish = true,
+            CreatedOn = now, CreatedBy = seededBy,
+            StoryDetails = new List<StoryDetail> { story2Detail },
+        };
+
+        db.Stories.AddRange(story1, story2);
         await db.SaveChangesAsync();
     }
 }

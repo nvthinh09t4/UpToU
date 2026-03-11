@@ -12,6 +12,7 @@ public record StoryDto(
     DateTime? PublishDate,
     bool IsPublish,
     bool IsDeleted,
+    string StoryType,
     int CategoryId,
     string CategoryTitle,
     DateTime CreatedOn,
@@ -23,5 +24,6 @@ public record StoryDto(
     int ViewCount,
     int UpvoteCount,
     int DownvoteCount,
-    string? CurrentUserVote
+    string? CurrentUserVote,
+    bool IsBookmarked
 );

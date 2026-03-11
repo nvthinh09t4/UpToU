@@ -4,6 +4,17 @@ export interface UserDto {
   firstName: string;
   lastName: string;
   roles: string[];
+  creditBalance: number;
+  activeTitle: string | null;
+  activeAvatarFrameUrl: string | null;
+  avatarUrl: string | null;
+  favoriteQuote: string | null;
+  mentionHandle: string | null;
+}
+
+export interface UserStatsDto {
+  allTimeCredits: number;
+  leaderboardPosition: number;
 }
 
 export interface AuthResponse {

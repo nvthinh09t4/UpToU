@@ -12,6 +12,9 @@ public class StoryDetailConfiguration : IEntityTypeConfiguration<StoryDetail>
     {
         builder.HasKey(sd => sd.Id);
 
+        // Match the global query filter on Story so EF never returns details for soft-deleted stories
+        builder.HasQueryFilter(sd => !sd.Story.IsDeleted);
+
         builder.Property(sd => sd.SavePath).HasMaxLength(2000).IsRequired();
         builder.Property(sd => sd.Content).HasColumnType("nvarchar(max)");
         builder.Property(sd => sd.ChangeNotes).HasMaxLength(1000);
@@ -32,6 +35,9 @@ public class StoryDetailConfiguration : IEntityTypeConfiguration<StoryDetail>
                        v => v.ToList()))
                .HasColumnType("nvarchar(max)")
                .IsRequired();
+
+        builder.Property(sd => sd.EffectiveDate);
+        builder.HasIndex(sd => new { sd.StoryId, sd.EffectiveDate });
 
         builder.HasIndex(sd => sd.StoryId);
         builder.HasIndex(sd => sd.IsPublish);

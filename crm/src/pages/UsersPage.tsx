@@ -5,18 +5,22 @@ import {
   CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControlLabel, IconButton, InputAdornment,
   MenuItem, Pagination, Select, Stack, Switch, TextField,
-  Tooltip, Typography,
+  Tooltip, Typography, Divider, FormControl, InputLabel,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import SearchIcon from '@mui/icons-material/Search'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import GavelIcon from '@mui/icons-material/Gavel'
+import LockOpenIcon from '@mui/icons-material/LockOpen'
 import { adminService } from '@/services/adminService'
-import type { AdminUser } from '@/types'
+import type { AdminUser, UserBan } from '@/types'
 
 function initials(u: AdminUser) {
   return `${u.firstName[0] ?? ''}${u.lastName[0] ?? ''}`.toUpperCase()
 }
+
+// ── Edit Dialog ───────────────────────────────────────────────────────────────
 
 interface EditDialogProps {
   user: AdminUser | null
@@ -83,6 +87,185 @@ function EditDialog({ user, roles, onClose, onSave, saving }: EditDialogProps) {
   )
 }
 
+// ── Ban Dialog ────────────────────────────────────────────────────────────────
+
+interface BanDialogProps {
+  user: AdminUser | null
+  categories: { id: number; title: string }[]
+  onClose: () => void
+  onBan: (data: { banType: string; categoryId?: number; reason: string; durationDays?: number }) => void
+  saving: boolean
+}
+
+function BanDialog({ user, categories, onClose, onBan, saving }: BanDialogProps) {
+  const [banType, setBanType] = useState('Global')
+  const [categoryId, setCategoryId] = useState<number | ''>('')
+  const [reason, setReason] = useState('')
+  const [durationDays, setDurationDays] = useState<number | ''>('')
+
+  function handleSubmit() {
+    if (!reason.trim()) return
+    onBan({
+      banType,
+      categoryId: banType === 'Category' && categoryId !== '' ? Number(categoryId) : undefined,
+      reason: reason.trim(),
+      durationDays: durationDays !== '' ? Number(durationDays) : undefined,
+    })
+  }
+
+  return (
+    <Dialog open={!!user} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Ban / Restrict — {user?.email}</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Ban Type</InputLabel>
+          <Select
+            label="Ban Type"
+            value={banType}
+            onChange={(e) => setBanType(e.target.value)}
+          >
+            <MenuItem value="Global">Global Ban</MenuItem>
+            <MenuItem value="Category">Category Restriction</MenuItem>
+          </Select>
+        </FormControl>
+
+        {banType === 'Category' && (
+          <FormControl fullWidth size="small">
+            <InputLabel>Category</InputLabel>
+            <Select
+              label="Category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value as number)}
+            >
+              {categories.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        <TextField
+          label="Reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          multiline
+          rows={3}
+          fullWidth
+          required
+          size="small"
+        />
+
+        <TextField
+          label="Duration (days) — leave empty for permanent"
+          type="number"
+          value={durationDays}
+          onChange={(e) => setDurationDays(e.target.value === '' ? '' : Number(e.target.value))}
+          inputProps={{ min: 1 }}
+          fullWidth
+          size="small"
+          helperText={durationDays === '' ? 'Permanent ban' : `Expires in ${durationDays} day(s)`}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button
+          variant="contained"
+          color="error"
+          disabled={saving || !reason.trim() || (banType === 'Category' && categoryId === '')}
+          onClick={handleSubmit}
+        >
+          {saving ? <CircularProgress size={20} /> : 'Ban User'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+// ── Ban History Dialog ────────────────────────────────────────────────────────
+
+interface BanHistoryDialogProps {
+  user: AdminUser | null
+  onClose: () => void
+}
+
+function BanHistoryDialog({ user, onClose }: BanHistoryDialogProps) {
+  const qc = useQueryClient()
+
+  const { data: bans = [], isLoading } = useQuery({
+    queryKey: ['user-bans', user?.id],
+    queryFn: () => adminService.getBans(user!.id).then((r) => r.data),
+    enabled: !!user,
+  })
+
+  const { mutate: revoke, isPending: revoking } = useMutation({
+    mutationFn: (banId: number) => adminService.revokeBan(banId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['user-bans'] }),
+  })
+
+  return (
+    <Dialog open={!!user} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Ban History — {user?.email}</DialogTitle>
+      <DialogContent>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : bans.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 2 }}>No bans found for this user.</Typography>
+        ) : (
+          bans.map((ban: UserBan, i: number) => (
+            <Box key={ban.id}>
+              {i > 0 && <Divider sx={{ my: 1.5 }} />}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <Chip
+                      label={ban.banType === 'Global' ? 'Global Ban' : `Restricted: ${ban.categoryTitle}`}
+                      size="small"
+                      color={ban.banType === 'Global' ? 'error' : 'warning'}
+                    />
+                    <Chip
+                      label={ban.isActive ? 'Active' : 'Revoked / Expired'}
+                      size="small"
+                      color={ban.isActive ? 'error' : 'default'}
+                      variant="outlined"
+                    />
+                  </Box>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>{ban.reason}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Issued by {ban.issuedByName} · {new Date(ban.issuedAt).toLocaleString()}
+                    {ban.expiresAt
+                      ? ` · Expires ${new Date(ban.expiresAt).toLocaleString()}`
+                      : ' · Permanent'}
+                    {ban.revokedAt && ` · Revoked ${new Date(ban.revokedAt).toLocaleString()}`}
+                  </Typography>
+                </Box>
+                {ban.isActive && (
+                  <Tooltip title="Revoke Ban">
+                    <IconButton
+                      size="small"
+                      color="success"
+                      disabled={revoking}
+                      onClick={() => revoke(ban.id)}
+                    >
+                      <LockOpenIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </Box>
+          ))
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function UsersPage() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
@@ -92,6 +275,8 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('')
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<AdminUser | null>(null)
+  const [banUser, setBanUser] = useState<AdminUser | null>(null)
+  const [banHistoryUser, setBanHistoryUser] = useState<AdminUser | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['users', page, pageSize, search, roleFilter],
@@ -106,6 +291,11 @@ export default function UsersPage() {
     queryFn: () => adminService.getRoles().then((r) => r.data),
   })
 
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => adminService.getCategories().then((r) => r.data.map((c) => ({ id: c.id, title: c.title }))),
+  })
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof adminService.updateUser>[1] }) =>
       adminService.updateUser(id, data),
@@ -115,6 +305,12 @@ export default function UsersPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminService.deleteUser(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); setDeleteConfirm(null) },
+  })
+
+  const banMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof adminService.banUser>[0]) =>
+      adminService.banUser(payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); setBanUser(null) },
   })
 
   const columns: GridColDef<AdminUser>[] = [
@@ -180,12 +376,22 @@ export default function UsersPage() {
     {
       field: 'actions',
       headerName: '',
-      width: 90,
+      width: 130,
       sortable: false,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Tooltip title="Edit">
             <IconButton size="small" onClick={() => setEditUser(row)}><EditIcon fontSize="small" /></IconButton>
+          </Tooltip>
+          <Tooltip title="Ban / Restrict">
+            <IconButton size="small" color="warning" onClick={() => setBanUser(row)}>
+              <GavelIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Ban History">
+            <IconButton size="small" onClick={() => setBanHistoryUser(row)}>
+              <LockOpenIcon fontSize="small" />
+            </IconButton>
           </Tooltip>
           <Tooltip title="Delete">
             <IconButton size="small" color="error" onClick={() => setDeleteConfirm(row)}>
@@ -268,6 +474,21 @@ export default function UsersPage() {
         onClose={() => setEditUser(null)}
         saving={updateMutation.isPending}
         onSave={(d) => editUser && updateMutation.mutate({ id: editUser.id, data: d as Parameters<typeof adminService.updateUser>[1] })}
+      />
+
+      {/* Ban dialog */}
+      <BanDialog
+        user={banUser}
+        categories={allCategories}
+        onClose={() => setBanUser(null)}
+        saving={banMutation.isPending}
+        onBan={(d) => banUser && banMutation.mutate({ userId: banUser.id, ...d })}
+      />
+
+      {/* Ban history dialog */}
+      <BanHistoryDialog
+        user={banHistoryUser}
+        onClose={() => setBanHistoryUser(null)}
       />
 
       {/* Delete confirm */}

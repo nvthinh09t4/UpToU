@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { userApi } from '../../services/userApi';
 import { Button } from '../ui/button';
+import { EmoticonPicker } from './EmoticonPicker';
 import type { UserMention } from '../../types/notification';
 
 interface CommentFormProps {
@@ -53,6 +54,24 @@ export function CommentForm({
     setBody(replaced + textAfter);
     setMentionQuery(null);
     textareaRef.current?.focus();
+  }
+
+  function insertEmoticon(shortcut: string) {
+    const ta = textareaRef.current;
+    const cursor = ta?.selectionStart ?? body.length;
+    const before = body.slice(0, cursor);
+    const after = body.slice(cursor);
+    const needsSpace = before.length > 0 && !before.endsWith(' ');
+    const inserted = `${needsSpace ? ' ' : ''}${shortcut} `;
+    setBody(before + inserted + after);
+    // Restore focus and move cursor after the inserted shortcut
+    requestAnimationFrame(() => {
+      if (ta) {
+        ta.focus();
+        const pos = cursor + inserted.length;
+        ta.setSelectionRange(pos, pos);
+      }
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,15 +127,18 @@ export function CommentForm({
 
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
 
-      <div className="mt-2 flex items-center justify-end gap-2">
-        {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
+      <div className="mt-2 flex items-center justify-between">
+        <EmoticonPicker onSelect={insertEmoticon} />
+        <div className="flex items-center gap-2">
+          {onCancel && (
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+          <Button type="submit" size="sm" disabled={!body.trim() || submitting}>
+            {submitting ? 'Posting…' : 'Post'}
           </Button>
-        )}
-        <Button type="submit" size="sm" disabled={!body.trim() || submitting}>
-          {submitting ? 'Posting…' : 'Post'}
-        </Button>
+        </div>
       </div>
     </form>
   );

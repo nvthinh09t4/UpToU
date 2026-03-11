@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { AuthResponse, LoginRequest, RegisterRequest, UserDto } from '../types/auth';
+import type { AuthResponse, LoginRequest, RegisterRequest, UserDto, UserStatsDto } from '../types/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -24,6 +24,12 @@ export const authApi = {
 
   me: () =>
     apiClient.get<UserDto>('/auth/me'),
+
+  myStats: () =>
+    apiClient.get<UserStatsDto>('/auth/me/stats'),
+
+  updateProfile: (data: { favoriteQuote?: string }) =>
+    apiClient.patch<UserDto>('/auth/profile', data),
 
   getExternalLoginUrl: (provider: 'google' | 'facebook', returnUrl: string) =>
     `${BASE_URL}/api/v1/auth/external-login?provider=${provider}&returnUrl=${encodeURIComponent(returnUrl)}`,

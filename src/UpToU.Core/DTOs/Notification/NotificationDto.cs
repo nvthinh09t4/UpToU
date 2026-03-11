@@ -6,6 +6,9 @@ public record NotificationDto(
     int StoryId,
     int CommentId,
     string ActorName,
+    string? Message,
     bool IsRead,
+    bool IsArchived,
+    bool IsImportant,
     DateTime CreatedAt
 );

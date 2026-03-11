@@ -23,6 +23,9 @@ public class Story
 
     public int ViewCount { get; set; } = 0;
 
+    /// <summary>"Article" | "Interactive"</summary>
+    public string StoryType { get; set; } = "Article";
+
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<StoryDetail> StoryDetails { get; set; } = new List<StoryDetail>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();

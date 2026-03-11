@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog,
@@ -14,6 +15,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import HistoryIcon from '@mui/icons-material/History'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
 import StarIcon from '@mui/icons-material/Star'
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import { adminService } from '@/services/adminService'
 import type { Category, Story, StoryDetail, Tag } from '@/types'
 
@@ -247,6 +249,7 @@ function RevisionDialog({ open, story, details, detailsLoading, onClose, onAddRe
 
 export default function StoriesPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Story | null>(null)
@@ -381,11 +384,18 @@ export default function StoriesPage() {
       ),
     },
     {
-      field: 'actions', headerName: '', width: 120, sortable: false,
+      field: 'actions', headerName: '', width: 150, sortable: false,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Tooltip title="Revisions"><IconButton size="small" onClick={() => setRevisionStory(row)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
           <Tooltip title="Edit"><IconButton size="small" onClick={() => { setEditing(row); setDialogOpen(true) }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+          {row.storyType === 'Interactive' && (
+            <Tooltip title="Edit Nodes">
+              <IconButton size="small" color="primary" onClick={() => navigate(`/stories/${row.id}/nodes`)}>
+                <AccountTreeIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => setDeleteTarget(row)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
         </Box>
       ),

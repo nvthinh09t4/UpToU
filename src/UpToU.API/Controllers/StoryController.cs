@@ -34,6 +34,22 @@ public class StoryController : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
 
+    [HttpGet("bookmarks")]
+    [Authorize]
+    public async Task<ActionResult<List<StoryDto>>> GetBookmarks(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetBookmarksQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("stories/{id:int}/bookmark")]
+    [Authorize]
+    public async Task<ActionResult<bool>> ToggleBookmark(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ToggleBookmarkCommand(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
     [HttpPost("stories/{id:int}/vote")]
     [Authorize]
     public async Task<ActionResult<VoteResultDto>> VoteStory(

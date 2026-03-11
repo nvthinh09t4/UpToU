@@ -57,10 +57,14 @@ public class GetStoryByIdHandler : IRequestHandler<GetStoryByIdQuery, Result<Sto
                 .FirstOrDefaultAsync(ct)
             : null;
 
+        var isBookmarked = userId is not null &&
+            await _db.Bookmarks.AnyAsync(b => b.StoryId == request.Id && b.UserId == userId, ct);
+
         return Result<StoryDto>.Success(StoryMapper.MapToDto(story,
             publishedRevisionOnly: true,
             upvoteCount: upvotes,
             downvoteCount: downvotes,
-            currentUserVote: currentUserVote));
+            currentUserVote: currentUserVote,
+            isBookmarked: isBookmarked));
     }
 }

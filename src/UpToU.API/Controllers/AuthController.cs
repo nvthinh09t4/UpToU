@@ -1,11 +1,15 @@
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UpToU.Core.Commands.Auth;
 using UpToU.Core.DTOs;
+using UpToU.Core.Entities;
+using UpToU.Infrastructure.Data;
 
 namespace UpToU.API.Controllers;
 
@@ -14,8 +18,15 @@ namespace UpToU.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ApplicationDbContext _db;
 
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    public AuthController(IMediator mediator, UserManager<ApplicationUser> userManager, ApplicationDbContext db)
+    {
+        _mediator = mediator;
+        _userManager = userManager;
+        _db = db;
+    }
 
     [HttpPost("register")]
     [EnableRateLimiting("AuthPolicy")]
@@ -118,21 +129,77 @@ public class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize]
-    public ActionResult<UserDto> Me()
+    public async Task<ActionResult<UserDto>> Me()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var userDto = new UserDto(
-            userId,
-            User.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
-            User.FindFirstValue("firstName") ?? string.Empty,
-            User.FindFirstValue("lastName") ?? string.Empty,
-            User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList()
-        );
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Unauthorized();
 
-        return Ok(userDto);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return Ok(new UserDto(
+            user.Id, user.Email ?? string.Empty,
+            user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle,
+            user.ActiveAvatarFrameUrl, user.AvatarUrl,
+            user.FavoriteQuote, user.MentionHandle
+        ));
+    }
+
+    [HttpGet("me/stats")]
+    [Authorize]
+    public async Task<ActionResult<UserStatsDto>> MyStats(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        // All-time credits earned (sum of positive transactions only)
+        var allTimeCredits = await _db.CreditTransactions
+            .Where(t => t.UserId == userId && t.Amount > 0)
+            .SumAsync(t => t.Amount, ct);
+
+        // Leaderboard rank — position among all users by all-time earned credits
+        var higherCount = await _db.CreditTransactions
+            .Where(t => t.Amount > 0)
+            .GroupBy(t => t.UserId)
+            .Select(g => new { UserId = g.Key, Total = g.Sum(t => t.Amount) })
+            .CountAsync(u => u.Total > allTimeCredits, ct);
+
+        var leaderboardPosition = higherCount + 1;
+
+        return Ok(new UserStatsDto(allTimeCredits, leaderboardPosition));
+    }
+
+    [HttpPatch("profile")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> UpdateProfile(
+        [FromBody] UpdateProfileRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Unauthorized();
+
+        if (request.FavoriteQuote is not null)
+            user.FavoriteQuote = request.FavoriteQuote.Trim().Length == 0
+                ? null
+                : request.FavoriteQuote.Trim()[..Math.Min(request.FavoriteQuote.Trim().Length, 200)];
+
+        await _userManager.UpdateAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return Ok(new UserDto(
+            user.Id, user.Email ?? string.Empty,
+            user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle,
+            user.ActiveAvatarFrameUrl, user.AvatarUrl,
+            user.FavoriteQuote, user.MentionHandle
+        ));
     }
 
     private void SetRefreshTokenCookie(string refreshToken)
@@ -146,3 +213,6 @@ public class AuthController : ControllerBase
         });
     }
 }
+
+public record UpdateProfileRequest(string? FavoriteQuote);
+public record UserStatsDto(int AllTimeCredits, int LeaderboardPosition);

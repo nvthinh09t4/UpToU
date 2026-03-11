@@ -1,5 +1,7 @@
 using System.Threading.RateLimiting;
 using FluentValidation;
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -11,6 +13,7 @@ using UpToU.API.Options;
 using UpToU.Core.Entities;
 using UpToU.Infrastructure;
 using UpToU.Infrastructure.Data;
+using UpToU.Infrastructure.Jobs;
 using UpToU.Infrastructure.Options;
 using UpToU.Infrastructure.Seed;
 
@@ -22,6 +25,27 @@ builder.Host.UseSerilog((ctx, config) =>
 
 // ── Infrastructure (Identity, DbContext, Services, MediatR) ──────────────────
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ── Hangfire ──────────────────────────────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout    = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval          = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks           = true,
+    }));
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = 2;
+    options.ServerName  = "UpToU-BgWorker";
+});
 
 // ── FluentValidation ─────────────────────────────────────────────────────────
 builder.Services.AddValidatorsFromAssembly(
@@ -141,6 +165,21 @@ using (var scope = app.Services.CreateScope())
         await db.Database.EnsureCreatedAsync();
     await DatabaseSeeder.SeedAsync(userManager, roleManager, db);
 }
+
+// ── Register recurring jobs ───────────────────────────────────────────────────
+// Must use the DI-based IRecurringJobManager (not the static RecurringJob API)
+// because JobStorage.Current is only initialised after app.Build().
+var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
+
+recurringJobs.AddOrUpdate<CleanupNotificationsJob>(
+    "cleanup-notifications",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Daily(2));  // 02:00 UTC daily
+
+recurringJobs.AddOrUpdate<ExpiredBanCleanupJob>(
+    "expired-ban-cleanup",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Hourly());  // every hour
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();

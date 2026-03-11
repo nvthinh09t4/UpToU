@@ -25,6 +25,9 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
         builder.HasIndex(s => s.CategoryId);
         builder.HasIndex(s => s.Slug).IsUnique().HasFilter("[Slug] IS NOT NULL");
 
+        builder.Property(s => s.StoryType).HasMaxLength(20).HasDefaultValue("Article");
+        builder.HasIndex(s => s.StoryType);
+
         builder.HasQueryFilter(s => !s.IsDeleted);
 
         builder.HasOne(s => s.Category)

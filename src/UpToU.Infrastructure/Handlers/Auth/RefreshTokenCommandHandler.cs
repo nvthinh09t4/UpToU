@@ -49,7 +49,8 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
         var jwtExpiry = DateTime.UtcNow.AddMinutes(15);
 
-        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles);
+        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle, user.ActiveAvatarFrameUrl, user.AvatarUrl);
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, jwtExpiry, userDto, newRefreshToken.Token));
     }
 }

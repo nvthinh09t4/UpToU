@@ -8,6 +8,7 @@ import { CategoryNav } from '../components/layout/CategoryNav';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppHeader } from '../components/layout/AppHeader';
+import { BookmarkButton } from '../components/bookmarks/BookmarkButton';
 
 function readTime(wordCount: number): string {
   const minutes = Math.max(1, Math.round(wordCount / 200));
@@ -304,11 +305,14 @@ export function CategoryPage() {
                               </span>
                             )}
                             {story.latestDetail && story.latestDetail.wordCount > 0 && (
-                              <span className="flex items-center gap-1 ml-auto">
+                              <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {readTime(story.latestDetail.wordCount)}
                               </span>
                             )}
+                            <span className="ml-auto">
+                              <BookmarkButton storyId={story.id} isBookmarked={story.isBookmarked} variant="icon" />
+                            </span>
                           </div>
                         </CardContent>
                       </Card>

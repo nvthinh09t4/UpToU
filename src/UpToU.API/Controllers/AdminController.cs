@@ -2,7 +2,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UpToU.Core.Commands.Admin;
+using UpToU.Core.Commands.Credit;
 using UpToU.Core.DTOs.Admin;
+using UpToU.Core.DTOs.Credit;
 
 namespace UpToU.API.Controllers;
 
@@ -82,6 +84,68 @@ public class AdminController : ControllerBase
     public async Task<ActionResult> DeleteRole(string name, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteRoleCommand(name), ct);
+        return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── Bans ─────────────────────────────────────────────────────────────────
+
+    [HttpGet("bans")]
+    public async Task<ActionResult<List<UserBanDto>>> GetBans(
+        [FromQuery] string? userId = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetUserBansQuery(userId), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("bans")]
+    public async Task<ActionResult<UserBanDto>> BanUser([FromBody] BanUserCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("bans/{id:int}/revoke")]
+    public async Task<ActionResult> RevokeBan(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new RevokeUserBanCommand(id), ct);
+        return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── Reward Shop Management ─────────────────────────────────────────────────
+
+    [HttpGet("rewards")]
+    public async Task<ActionResult<List<AdminRewardItemDto>>> GetAdminRewards(
+        [FromQuery] string? category = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAdminRewardsQuery(category), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("rewards")]
+    public async Task<ActionResult<AdminRewardItemDto>> CreateReward(
+        [FromBody] CreateRewardItemCommand command,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return result.IsSuccess ? CreatedAtAction(nameof(GetAdminRewards), result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPut("rewards/{id:int}")]
+    public async Task<ActionResult<AdminRewardItemDto>> UpdateReward(
+        int id,
+        [FromBody] UpdateRewardItemCommand command,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(command with { Id = id }, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpDelete("rewards/{id:int}")]
+    public async Task<ActionResult> DeleteReward(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteRewardItemCommand(id), ct);
         return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
     }
 }

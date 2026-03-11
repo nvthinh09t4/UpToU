@@ -10,6 +10,9 @@ public class StoryVoteConfiguration : IEntityTypeConfiguration<StoryVote>
     {
         builder.HasKey(v => v.Id);
 
+        // Match the global query filter on Story so EF never returns votes for soft-deleted stories
+        builder.HasQueryFilter(v => !v.Story.IsDeleted);
+
         builder.Property(v => v.VoteType).HasMaxLength(10).IsRequired();
 
         builder.HasOne(v => v.Story)

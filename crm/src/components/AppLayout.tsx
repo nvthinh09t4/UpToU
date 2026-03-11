@@ -6,12 +6,15 @@ import {
   Menu, MenuItem, Toolbar, Tooltip, Typography,
 } from '@mui/material'
 import ArticleIcon from '@mui/icons-material/Article'
+import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 import CategoryIcon from '@mui/icons-material/Category'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import GroupsIcon from '@mui/icons-material/Groups'
 import MenuIcon from '@mui/icons-material/Menu'
 import PeopleIcon from '@mui/icons-material/People'
 import LogoutIcon from '@mui/icons-material/Logout'
+import ScheduleIcon from '@mui/icons-material/Schedule'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import { useAuthStore } from '@/store/authStore'
 import { authService } from '@/services/authService'
 
@@ -23,6 +26,9 @@ const NAV_ITEMS = [
   { label: 'Roles', path: '/roles', icon: <GroupsIcon /> },
   { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
   { label: 'Stories', path: '/stories', icon: <ArticleIcon /> },
+  { label: 'Reports', path: '/reports', icon: <AutoGraphIcon /> },
+  { label: 'Rewards', path: '/rewards', icon: <ShoppingCartIcon /> },
+  { label: 'Jobs', path: '/jobs', icon: <ScheduleIcon /> },
 ]
 
 export default function AppLayout() {
