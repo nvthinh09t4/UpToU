@@ -1,14 +1,24 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Moq;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.Entities;
 using UpToU.Infrastructure.Data;
 using UpToU.Infrastructure.Handlers.Story;
-using Microsoft.EntityFrameworkCore;
 
 namespace UpToU.UnitTests.Story;
 
 public class GetStoriesByCategoryHandlerTests
 {
+    private readonly Mock<IHttpContextAccessor> _httpContextMock;
+
+    public GetStoriesByCategoryHandlerTests()
+    {
+        _httpContextMock = new Mock<IHttpContextAccessor>();
+        _httpContextMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
+    }
+
     private static ApplicationDbContext CreateInMemoryDb()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -48,7 +58,7 @@ public class GetStoriesByCategoryHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(category.Id), CancellationToken.None);
@@ -74,7 +84,7 @@ public class GetStoriesByCategoryHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(category.Id), CancellationToken.None);
@@ -100,7 +110,7 @@ public class GetStoriesByCategoryHandlerTests
         db.Stories.AddRange(older, newer);
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(category.Id), CancellationToken.None);
@@ -135,7 +145,7 @@ public class GetStoriesByCategoryHandlerTests
         db.Stories.Add(story);
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(category.Id), CancellationToken.None);
@@ -156,7 +166,7 @@ public class GetStoriesByCategoryHandlerTests
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(category.Id), CancellationToken.None);
@@ -182,7 +192,7 @@ public class GetStoriesByCategoryHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetStoriesByCategoryHandler(db);
+        var handler = new GetStoriesByCategoryHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoriesByCategoryQuery(cat1.Id), CancellationToken.None);
