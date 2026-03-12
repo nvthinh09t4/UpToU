@@ -1,9 +1,33 @@
+export interface RecentUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  createdAt: string
+  isActive: boolean
+}
+
+export interface RecentStory {
+  id: number
+  title: string
+  categoryTitle: string
+  viewCount: number
+  publishDate: string | null
+}
+
 export interface DashboardStats {
   totalUsers: number
   registeredToday: number
   loggedInToday: number
   totalRoles: number
   activeUsers: number
+  totalStories: number
+  publishedStories: number
+  storiesThisWeek: number
+  totalComments: number
+  totalReactions: number
+  recentUsers: RecentUser[]
+  recentStories: RecentStory[]
 }
 
 export interface AdminUser {
@@ -84,6 +108,15 @@ export interface Story {
   modifiedBy: string | null
   tags: Tag[]
   latestDetail: StoryDetail | null
+  // Workflow fields
+  authorId: string | null
+  status: 'Draft' | 'Submitted' | 'Approved' | 'Published' | 'Rejected'
+  submittedAt: string | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  rejectionReason: string | null
+  /** Supervisor specifically assigned by the contributor to review this story */
+  assignedSupervisorId: string | null
 }
 
 // ── Reports ──────────────────────────────────────────────────────────────────
@@ -220,7 +253,7 @@ export interface AdminRewardItem {
   id: number
   name: string
   description: string | null
-  category: 'Title' | 'AvatarFrame' | 'Avatar' | 'StoryAccess'
+  category: 'Title' | 'AvatarFrame' | 'Avatar' | 'StoryAccess' | 'NameChange'
   creditCost: number
   value: string | null
   previewUrl: string | null

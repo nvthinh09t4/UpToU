@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Bookmark, Check, Edit3, Gift, Lock,
-  Medal, Quote, Star, Trophy, X, Zap,
+  Medal, Quote, Star, Trophy, Type, X, Zap,
 } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/authApi';
+import { creditApi } from '../services/creditApi';
 import { getRank, RANK_TIERS } from '../utils/rankHelper';
 
 // ── Rank medal ────────────────────────────────────────────────────────────────
@@ -128,6 +129,77 @@ function QuoteEditor({ currentQuote, onSave }: { currentQuote: string | null; on
   );
 }
 
+// ── Display name editor ───────────────────────────────────────────────────────
+
+function formatExpiry(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (d <= new Date()) return null; // already expired
+  const diffMs = d.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays <= 1) return 'expires today';
+  if (diffDays <= 7) return `expires in ${diffDays} days`;
+  return `expires ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+}
+
+function DisplayNameEditor({
+  currentName, expiresAt, onSave,
+}: {
+  currentName: string | null;
+  expiresAt: string | null;
+  onSave: (n: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(currentName ?? '');
+
+  const expiry = formatExpiry(expiresAt);
+  const isExpired = expiresAt !== null && new Date(expiresAt) <= new Date();
+  const activeName = isExpired ? null : currentName;
+
+  if (!open) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={() => { setValue(activeName ?? ''); setOpen(true); }}
+          className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/30 px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/60 hover:text-white"
+        >
+          <Type className="h-3 w-3" />
+          {activeName ? `Display name: "${activeName}"` : 'Set display name (use ticket)'}
+        </button>
+        {activeName && expiry && (
+          <p className="pl-1 text-[10px] text-white/40">{expiry}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value.slice(0, 100))}
+        placeholder="Your display name (max 100 chars)"
+        autoFocus
+        maxLength={100}
+        className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-white"
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs opacity-30">{value.length}/100</span>
+        <div className="flex gap-2">
+          <button onClick={() => setOpen(false)}
+            className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1 text-xs opacity-70 hover:opacity-100">
+            <X className="h-3 w-3" /> Cancel
+          </button>
+          <button onClick={() => { onSave(value); setOpen(false); }}
+            className="flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-xs text-white hover:bg-white/30">
+            <Check className="h-3 w-3" /> Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -150,7 +222,29 @@ export function DashboardPage() {
     },
   });
 
+  const { data: nameChangeTickets = [] } = useQuery({
+    queryKey: ['rewards', 'NameChange'],
+    queryFn: () => creditApi.getRewards('NameChange'),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const hasNameChangeTicket = nameChangeTickets.some((r) => r.isUnlocked);
+
+  const { mutate: changeDisplayName, isPending: changingName } = useMutation({
+    mutationFn: (name: string) => authApi.changeDisplayName(name).then((r) => r.data),
+    onSuccess: (updated) => {
+      if (accessToken) setAuth(accessToken, updated);
+      qc.invalidateQueries({ queryKey: ['rewards', 'NameChange'] });
+    },
+  });
+
   if (!user) return null;
+
+  // Treat display name as absent if it has expired client-side
+  const displayNameActive =
+    user.displayNameExpiresAt && new Date(user.displayNameExpiresAt) <= new Date()
+      ? null
+      : user.displayName;
 
   const allTimeCredits = stats?.allTimeCredits ?? user.creditBalance;
   const rank = getRank(allTimeCredits);
@@ -192,7 +286,9 @@ export function DashboardPage() {
             {/* Info */}
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <h1 className="text-2xl font-extrabold">{user.firstName} {user.lastName}</h1>
+                <h1 className="text-2xl font-extrabold">
+                  {displayNameActive ?? `${user.firstName} ${user.lastName}`}
+                </h1>
                 {user.activeTitle && (
                   <span className="rounded-full px-3 py-0.5 text-xs font-semibold text-white"
                     style={{ background: rank.color }}>
@@ -200,11 +296,21 @@ export function DashboardPage() {
                   </span>
                 )}
               </div>
+              {displayNameActive && (
+                <p className="mt-0.5 text-xs text-white/50">{user.firstName} {user.lastName}</p>
+              )}
               {user.mentionHandle && (
                 <p className="mt-0.5 text-sm text-muted-foreground">@{user.mentionHandle}</p>
               )}
-              <div className="mt-3 max-w-sm">
+              <div className="mt-3 max-w-sm space-y-2">
                 <QuoteEditor currentQuote={user.favoriteQuote} onSave={(q) => !savingQuote && saveQuote(q)} />
+                {hasNameChangeTicket && (
+                  <DisplayNameEditor
+                    currentName={user.displayName}
+                    expiresAt={user.displayNameExpiresAt}
+                    onSave={(n) => !changingName && changeDisplayName(n)}
+                  />
+                )}
               </div>
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
                 {[
@@ -324,38 +430,6 @@ export function DashboardPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Rank milestones table */}
-            <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Rank Milestones
-              </h2>
-              <div className="overflow-hidden rounded-xl border border-border">
-                {RANK_TIERS.map((tier, i) => {
-                  const reached = allTimeCredits >= tier.min;
-                  const current = tier.name === rank.name;
-                  return (
-                    <div key={tier.name}
-                      className={`flex items-center gap-4 px-4 py-3 ${i > 0 ? 'border-t border-border' : ''}`}
-                      style={{ background: current ? `${tier.color}0e` : undefined }}>
-                      <RankMedal rankName={tier.name} stars={reached ? Math.min(5, 1 + Math.floor((allTimeCredits - tier.min) / tier.perStar)) : 1}
-                        color={reached ? tier.color : '#374151'} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold"
-                          style={{ color: reached ? tier.color : undefined, opacity: reached ? 1 : 0.35 }}>
-                          {tier.name}
-                          {current && <span className="ml-2 text-xs font-normal text-muted-foreground">← current</span>}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{tier.min.toLocaleString()} credits</p>
-                      </div>
-                      {reached
-                        ? <Check className="h-4 w-4 flex-shrink-0" style={{ color: tier.color }} />
-                        : <Lock className="h-4 w-4 flex-shrink-0 opacity-20" />}
-                    </div>
-                  );
-                })}
               </div>
             </div>
 

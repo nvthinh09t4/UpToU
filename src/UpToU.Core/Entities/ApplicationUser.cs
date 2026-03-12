@@ -12,6 +12,12 @@ public class ApplicationUser : IdentityUser
 
     public string? MentionHandle { get; set; }
 
+    /// <summary>Optional display name shown on leaderboard and profile. Falls back to FirstName + LastName.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>UTC timestamp when the custom DisplayName expires and reverts to FirstName + LastName.</summary>
+    public DateTime? DisplayNameExpiresAt { get; set; }
+
     // ── Credit / reward system ──────────────────────────────────────────────────
     public int CreditBalance { get; set; }
     public string? ActiveTitle { get; set; }

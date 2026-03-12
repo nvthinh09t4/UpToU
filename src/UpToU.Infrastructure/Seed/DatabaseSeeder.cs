@@ -22,7 +22,7 @@ public static class DatabaseSeeder
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager)
     {
-        string[] roles = ["Admin", "User"];
+        string[] roles = ["Admin", "User", "Supervisor", "Senior Supervisor", "Contributor"];
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -114,6 +114,136 @@ public static class DatabaseSeeder
         {
             user.MentionHandle = "user.01";
             await userManager.UpdateAsync(user);
+        }
+
+        // ── Senior Supervisor seed user ───────────────────────────────────────
+        const string seniorSupEmail = "seniorsuper@uptou.local";
+        const string seedPassword   = "123456aA@";
+
+        var seniorSup = await userManager.FindByEmailAsync(seniorSupEmail);
+        if (seniorSup is null)
+        {
+            seniorSup = new ApplicationUser
+            {
+                UserName     = seniorSupEmail,
+                Email        = seniorSupEmail,
+                EmailConfirmed = true,
+                FirstName    = "Sarah",
+                LastName     = "Chen",
+                MentionHandle = "sarah.chen",
+                CreatedAt    = DateTime.UtcNow
+            };
+            var result = await userManager.CreateAsync(seniorSup, seedPassword);
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(seniorSup, "Senior Supervisor");
+                await userManager.AddToRoleAsync(seniorSup, "User");
+            }
+        }
+        else if (seniorSup.MentionHandle is null)
+        {
+            seniorSup.MentionHandle = "sarah.chen";
+            await userManager.UpdateAsync(seniorSup);
+        }
+
+        // ── Supervisor seed users ─────────────────────────────────────────────
+        foreach (var (email, firstName, lastName, handle) in new[]
+        {
+            ("supervisor1@uptou.local", "James",   "Park",   "james.park"),
+            ("supervisor2@uptou.local", "Amelia",  "Torres", "amelia.torres"),
+        })
+        {
+            var sup = await userManager.FindByEmailAsync(email);
+            if (sup is null)
+            {
+                sup = new ApplicationUser
+                {
+                    UserName      = email,
+                    Email         = email,
+                    EmailConfirmed = true,
+                    FirstName     = firstName,
+                    LastName      = lastName,
+                    MentionHandle = handle,
+                    CreatedAt     = DateTime.UtcNow
+                };
+                var result = await userManager.CreateAsync(sup, seedPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(sup, "Supervisor");
+                    await userManager.AddToRoleAsync(sup, "User");
+                }
+            }
+            else if (sup.MentionHandle is null)
+            {
+                sup.MentionHandle = handle;
+                await userManager.UpdateAsync(sup);
+            }
+        }
+
+        // ── Contributor seed users ────────────────────────────────────────────
+        foreach (var (email, firstName, lastName, handle) in new[]
+        {
+            ("contributor1@uptou.local", "Leo",    "Nguyen", "leo.nguyen"),
+            ("contributor2@uptou.local", "Priya",  "Sharma", "priya.sharma"),
+            ("contributor3@uptou.local", "Marcus", "Hill",   "marcus.hill"),
+        })
+        {
+            var contrib = await userManager.FindByEmailAsync(email);
+            if (contrib is null)
+            {
+                contrib = new ApplicationUser
+                {
+                    UserName      = email,
+                    Email         = email,
+                    EmailConfirmed = true,
+                    FirstName     = firstName,
+                    LastName      = lastName,
+                    MentionHandle = handle,
+                    CreatedAt     = DateTime.UtcNow
+                };
+                var result = await userManager.CreateAsync(contrib, seedPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(contrib, "Contributor");
+                    await userManager.AddToRoleAsync(contrib, "User");
+                }
+            }
+            else if (contrib.MentionHandle is null)
+            {
+                contrib.MentionHandle = handle;
+                await userManager.UpdateAsync(contrib);
+            }
+        }
+
+        // ── Pending users (registered on client, no CRM role assigned yet) ────
+        foreach (var (email, firstName, lastName, handle) in new[]
+        {
+            ("pending1@uptou.local", "Chris",  "Evans",   "chris.evans"),
+            ("pending2@uptou.local", "Fatima", "Al-Said", "fatima.alsaid"),
+        })
+        {
+            var pending = await userManager.FindByEmailAsync(email);
+            if (pending is null)
+            {
+                pending = new ApplicationUser
+                {
+                    UserName      = email,
+                    Email         = email,
+                    EmailConfirmed = true,
+                    FirstName     = firstName,
+                    LastName      = lastName,
+                    MentionHandle = handle,
+                    CreatedAt     = DateTime.UtcNow
+                };
+                var result = await userManager.CreateAsync(pending, seedPassword);
+                if (result.Succeeded)
+                    await userManager.AddToRoleAsync(pending, "User");
+            }
+            else if (pending.MentionHandle is null)
+            {
+                pending.MentionHandle = handle;
+                await userManager.UpdateAsync(pending);
+            }
         }
     }
 

@@ -10,6 +10,8 @@ export interface UserDto {
   avatarUrl: string | null;
   favoriteQuote: string | null;
   mentionHandle: string | null;
+  displayName: string | null;
+  displayNameExpiresAt: string | null;
 }
 
 export interface UserStatsDto {

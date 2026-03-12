@@ -11,7 +11,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import FlagIcon from '@mui/icons-material/Flag'
 import SaveIcon from '@mui/icons-material/Save'
-import StopIcon from '@mui/icons-material/Stop'
+import { Stop as StopIcon } from '@mui/icons-material'
 import { adminService } from '@/services/adminService'
 import type { StoryNode, StoryNodeAnswer } from '@/types'
 

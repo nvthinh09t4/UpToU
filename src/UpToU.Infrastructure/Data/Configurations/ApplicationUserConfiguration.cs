@@ -20,6 +20,10 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
                .HasMaxLength(100)
                .IsRequired(false);
 
+        builder.Property(u => u.DisplayName)
+               .HasMaxLength(100)
+               .IsRequired(false);
+
         builder.HasIndex(u => u.MentionHandle)
                .IsUnique()
                .HasFilter("[MentionHandle] IS NOT NULL");
@@ -32,11 +36,11 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
                .IsRequired(false);
 
         builder.Property(u => u.ActiveAvatarFrameUrl)
-               .HasMaxLength(500)
+               .HasMaxLength(2048)
                .IsRequired(false);
 
         builder.Property(u => u.AvatarUrl)
-               .HasMaxLength(500)
+               .HasMaxLength(2048)
                .IsRequired(false);
 
         builder.Property(u => u.FavoriteQuote)

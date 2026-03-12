@@ -18,8 +18,10 @@ public class JobsController : ControllerBase
     // Human-readable display names keyed by recurring job id
     private static readonly Dictionary<string, string> JobDisplayNames = new()
     {
-        ["cleanup-notifications"] = "Cleanup Archived Notifications",
-        ["expired-ban-cleanup"]   = "Auto-Revoke Expired Bans",
+        ["cleanup-notifications"]       = "Cleanup Archived Notifications",
+        ["expired-ban-cleanup"]         = "Auto-Revoke Expired Bans",
+        ["clear-expired-display-names"] = "Clear Expired Display Names",
+        ["publish-approved-stories"]    = "Publish Scheduled Stories",
     };
 
     public JobsController(IBackgroundJobClient jobClient, ILogger<JobsController> logger)
@@ -109,6 +111,14 @@ public class JobsController : ControllerBase
 
             case "expired-ban-cleanup":
                 newJobId = _jobClient.Enqueue<ExpiredBanCleanupJob>(j => j.ExecuteAsync(CancellationToken.None));
+                break;
+
+            case "clear-expired-display-names":
+                newJobId = _jobClient.Enqueue<ClearExpiredDisplayNamesJob>(j => j.ExecuteAsync(CancellationToken.None));
+                break;
+
+            case "publish-approved-stories":
+                newJobId = _jobClient.Enqueue<PublishApprovedStoriesJob>(j => j.ExecuteAsync(CancellationToken.None));
                 break;
 
             default:

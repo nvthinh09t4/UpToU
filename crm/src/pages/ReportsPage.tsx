@@ -14,10 +14,7 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble'
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions'
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
 import PeopleIcon from '@mui/icons-material/People'
-import ThumbDownIcon from '@mui/icons-material/ThumbDown'
-import ThumbUpIcon from '@mui/icons-material/ThumbUp'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import VisibilityIcon from '@mui/icons-material/Visibility'
+import { ThumbDown as ThumbDownIcon, ThumbUp as ThumbUpIcon, TrendingUp as TrendingUpIcon, Visibility as VisibilityIcon } from '@mui/icons-material'
 import { adminService } from '@/services/adminService'
 import type { StoryStats, UserActivity } from '@/types'
 
@@ -89,7 +86,7 @@ function PageSkeleton() {
     <Box>
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <Grid item xs={12} sm={6} md={4} lg={2.4} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }} key={i}>
             <Skeleton variant="rounded" height={100} />
           </Grid>
         ))}
@@ -117,14 +114,29 @@ export default function ReportsPage() {
   const [storySort, setStorySort] = useState<StorySortKey>('viewCount')
   const [activeTab, setActiveTab] = useState(0)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-reports'],
     queryFn: () => adminService.getReports().then((r) => r.data),
     staleTime: 2 * 60_000,
+    retry: 1,
   })
 
   if (isLoading) return <PageSkeleton />
-  if (!data) return null
+
+  if (error || !data) {
+    const msg = (error as { response?: { data?: { detail?: string; title?: string } }; message?: string })
+      ?.response?.data?.detail
+      ?? (error as { response?: { data?: { title?: string } } })?.response?.data?.title
+      ?? (error as { message?: string })?.message
+      ?? 'Failed to load reports. Make sure the API is running and you are logged in as admin.'
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <AutoGraphIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
+        <Typography variant="h6" color="error" gutterBottom>Could not load reports</Typography>
+        <Typography variant="body2" color="text.secondary">{msg}</Typography>
+      </Box>
+    )
+  }
 
   const { overview, topStories, trendingStories, mostActiveUsers, categoryStats, reactionDistribution } = data
 
@@ -143,25 +155,25 @@ export default function ReportsPage() {
 
       {/* ── Overview stat cards ─────────────────────────────────────────── */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={4} lg={2.4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
           <StatCard label="Total Users" value={overview.totalUsers}
             sub={`+${overview.newUsersThisWeek} this week · +${overview.newUsersThisMonth} this month`}
             icon={<PeopleIcon fontSize="small" />} color="primary" />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2.4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
           <StatCard label="Published Stories" value={overview.publishedStories}
             sub={`${overview.totalStories} total incl. drafts`}
             icon={<ArticleIcon fontSize="small" />} color="success" />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2.4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
           <StatCard label="Total Views" value={overview.totalViews}
             icon={<VisibilityIcon fontSize="small" />} color="info" />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2.4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
           <StatCard label="Comments" value={overview.totalComments}
             icon={<ChatBubbleIcon fontSize="small" />} color="warning" />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2.4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
           <StatCard label="Reactions" value={overview.totalReactions}
             sub={`${overview.totalVotes} votes · ${overview.totalBookmarks} saves`}
             icon={<EmojiEmotionsIcon fontSize="small" />} color="error" />
@@ -262,7 +274,7 @@ export default function ReportsPage() {
           ) : (
             <Grid container spacing={2}>
               {trendingStories.map((t, i) => (
-                <Grid item xs={12} sm={6} md={4} key={t.id}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={t.id}>
                   <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
                     {t.coverImageUrl && (
                       <Box
@@ -293,7 +305,7 @@ export default function ReportsPage() {
                           { icon: <ThumbUpIcon sx={{ fontSize: 12 }} />, label: 'votes', val: t.recentVotes },
                           { icon: <BookmarkIcon sx={{ fontSize: 12 }} />, label: 'saves', val: t.recentBookmarks },
                         ].map(({ icon, label, val }) => (
-                          <Grid item xs={6} key={label}>
+                          <Grid size={6} key={label}>
                             <Stack direction="row" alignItems="center" gap={0.5}>
                               <Box sx={{ color: 'text.secondary' }}>{icon}</Box>
                               <Typography variant="caption" color="text.secondary">{val} {label}</Typography>
@@ -404,7 +416,7 @@ export default function ReportsPage() {
       {/* ── Tab 4: Reactions ─────────────────────────────────────────── */}
       {activeTab === 4 && (
         <Grid container spacing={3}>
-          <Grid item xs={12} md={5}>
+          <Grid size={{ xs: 12, md: 5 }}>
             <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
               <CardHeader title="Reaction Breakdown" subheader={`${fmt(totalReactions)} total reactions`} />
               <Divider />
@@ -444,7 +456,7 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={7}>
+          <Grid size={{ xs: 12, md: 7 }}>
             <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
               <CardHeader title="Engagement Summary" />
               <Divider />
@@ -456,7 +468,7 @@ export default function ReportsPage() {
                     { label: 'Comments', value: overview.totalComments, icon: <ChatBubbleIcon />, color: 'warning.main' },
                     { label: 'Bookmarks', value: overview.totalBookmarks, icon: <BookmarkIcon />, color: 'primary.main' },
                   ].map(({ label, value, icon, color }) => (
-                    <Grid item xs={6} key={label}>
+                    <Grid size={6} key={label}>
                       <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'action.hover', textAlign: 'center' }}>
                         <Box sx={{ color, mb: 0.5 }}>{icon}</Box>
                         <Typography variant="h5" fontWeight={700}>{fmt(value)}</Typography>

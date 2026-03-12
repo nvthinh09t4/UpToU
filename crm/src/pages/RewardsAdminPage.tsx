@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, FormControl, FormControlLabel, IconButton,
-  InputLabel, MenuItem, Paper, Select, Stack, Switch, Tab, Tabs,
+  InputLabel, MenuItem, Paper, Select, Switch, Tab, Tabs,
   TextField, Tooltip, Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
@@ -14,7 +14,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'
 import { adminService } from '@/services/adminService'
 import type { AdminRewardItem } from '@/types'
 
-const CATEGORIES = ['Title', 'AvatarFrame', 'Avatar', 'StoryAccess'] as const
+const CATEGORIES = ['Title', 'AvatarFrame', 'Avatar', 'StoryAccess', 'NameChange'] as const
 type Category = typeof CATEGORIES[number]
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -22,13 +22,15 @@ const CATEGORY_LABELS: Record<Category, string> = {
   AvatarFrame: 'Avatar Frame',
   Avatar: 'Avatar',
   StoryAccess: 'Story Access',
+  NameChange: 'Name Change Ticket',
 }
 
-const CATEGORY_COLORS: Record<Category, 'secondary' | 'primary' | 'success' | 'warning'> = {
+const CATEGORY_COLORS: Record<Category, 'secondary' | 'primary' | 'success' | 'warning' | 'info'> = {
   Title: 'secondary',
   AvatarFrame: 'primary',
   Avatar: 'success',
   StoryAccess: 'warning',
+  NameChange: 'info',
 }
 
 // ── Form state ────────────────────────────────────────────────────────────────

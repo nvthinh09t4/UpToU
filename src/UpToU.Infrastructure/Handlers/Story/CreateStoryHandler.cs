@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.DTOs.Story;
@@ -11,8 +13,13 @@ namespace UpToU.Infrastructure.Handlers.Story;
 public class CreateStoryHandler : IRequestHandler<CreateStoryCommand, Result<StoryDto>>
 {
     private readonly ApplicationDbContext _db;
+    private readonly IHttpContextAccessor _http;
 
-    public CreateStoryHandler(ApplicationDbContext db) => _db = db;
+    public CreateStoryHandler(ApplicationDbContext db, IHttpContextAccessor http)
+    {
+        _db = db;
+        _http = http;
+    }
 
     public async Task<Result<StoryDto>> Handle(CreateStoryCommand request, CancellationToken ct)
     {
@@ -24,8 +31,12 @@ public class CreateStoryHandler : IRequestHandler<CreateStoryCommand, Result<Sto
             ? await _db.Tags.Where(t => request.TagIds.Contains(t.Id)).ToListAsync(ct)
             : new List<Tag>();
 
+        var authorId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         var story = new Core.Entities.Story
         {
+            AuthorId = authorId,
+            Status   = StoryStatus.Draft,
             Title = request.Title,
             Slug = request.Slug,
             Description = request.Description,

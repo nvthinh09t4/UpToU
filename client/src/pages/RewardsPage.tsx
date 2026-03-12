@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Coins, Gift, Lock, CheckCircle, Sparkles, Star, History, Package } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Coins, Gift, Lock, CheckCircle, Sparkles, Star, History, Package, Type } from 'lucide-react';
 import { creditApi } from '../services/creditApi';
 import { useAuthStore } from '../store/authStore';
 import { AppHeader } from '../components/layout/AppHeader';
@@ -14,6 +15,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: React.ReactNode }> 
   AvatarFrame: { label: 'Avatar Frames', icon: <Sparkles className="h-4 w-4" /> },
   Avatar: { label: 'Avatars', icon: <Gift className="h-4 w-4" /> },
   StoryAccess: { label: 'Story Access', icon: <Lock className="h-4 w-4" /> },
+  NameChange: { label: 'Name Change Tickets', icon: <Type className="h-4 w-4" /> },
 };
 
 const TX_TYPE_LABELS: Record<string, string> = {
@@ -68,20 +70,29 @@ function RewardCard({
         </span>
 
         {item.isUnlocked ? (
-          <Button
-            size="sm"
-            variant={item.isActive ? 'default' : 'outline'}
-            onClick={() => onToggle(item.id, !item.isActive)}
-          >
-            {item.isActive ? (
-              <>
-                <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                Equipped
-              </>
-            ) : (
-              'Equip'
-            )}
-          </Button>
+          item.category === 'NameChange' ? (
+            <Link to="/dashboard">
+              <Button size="sm" variant="outline" className="gap-1">
+                <Type className="h-3.5 w-3.5" />
+                Use on Profile
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              size="sm"
+              variant={item.isActive ? 'default' : 'outline'}
+              onClick={() => onToggle(item.id, !item.isActive)}
+            >
+              {item.isActive ? (
+                <>
+                  <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                  Equipped
+                </>
+              ) : (
+                'Equip'
+              )}
+            </Button>
+          )
         ) : (
           <Button
             size="sm"
@@ -135,21 +146,30 @@ function MyItemCard({
       </div>
 
       <div className="mt-auto pt-1">
-        <Button
-          size="sm"
-          variant={item.isActive ? 'default' : 'outline'}
-          className="w-full"
-          onClick={() => onToggle(item.id, !item.isActive)}
-        >
-          {item.isActive ? (
-            <>
-              <CheckCircle className="mr-1 h-3.5 w-3.5" />
-              Equipped
-            </>
-          ) : (
-            'Equip'
-          )}
-        </Button>
+        {item.category === 'NameChange' ? (
+          <Link to="/dashboard" className="block">
+            <Button size="sm" variant="outline" className="w-full gap-1">
+              <Type className="h-3.5 w-3.5" />
+              Use on Profile
+            </Button>
+          </Link>
+        ) : (
+          <Button
+            size="sm"
+            variant={item.isActive ? 'default' : 'outline'}
+            className="w-full"
+            onClick={() => onToggle(item.id, !item.isActive)}
+          >
+            {item.isActive ? (
+              <>
+                <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                Equipped
+              </>
+            ) : (
+              'Equip'
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -270,9 +290,15 @@ export function RewardsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.invalidateQueries({ queryKey: ['credit-balance'] });
+      invalidateNameChange();
       refreshUser();
     },
   });
+
+  // After any toggle, refresh the NameChange ticket status on the dashboard
+  function invalidateNameChange() {
+    queryClient.invalidateQueries({ queryKey: ['rewards', 'NameChange'] });
+  }
 
   const { mutate: toggle } = useMutation({
     mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
@@ -280,6 +306,7 @@ export function RewardsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.invalidateQueries({ queryKey: ['credit-balance'] });
+      invalidateNameChange();
       refreshUser();
     },
   });

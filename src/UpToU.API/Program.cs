@@ -91,7 +91,18 @@ builder.Services
 
 // ── Authorization ─────────────────────────────────────────────────────────────
 builder.Services.AddAuthorization(options =>
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin")));
+{
+    // Admin-only operations: role/ban/reward management (no story approval)
+    options.AddPolicy("AdminOnly",               p => p.RequireRole("Admin"));
+    // Story approval/rejection: Supervisor + Senior Supervisor (NOT Admin)
+    options.AddPolicy("StaffOnly",               p => p.RequireRole("Supervisor", "Senior Supervisor"));
+    // Role assignment: Admin + Senior Supervisor
+    options.AddPolicy("SeniorSupervisorOrAdmin", p => p.RequireRole("Admin", "Senior Supervisor"));
+    // Story CRUD + dashboard: all CRM staff
+    options.AddPolicy("StaffOrAdmin",            p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor"));
+    // Story submission + management: all CRM roles
+    options.AddPolicy("ContributorOrAbove",      p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor", "Contributor"));
+});
 
 // ── Options (API-specific) ────────────────────────────────────────────────────
 builder.Services.Configure<ClientOptions>(
@@ -180,6 +191,16 @@ recurringJobs.AddOrUpdate<ExpiredBanCleanupJob>(
     "expired-ban-cleanup",
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Hourly());  // every hour
+
+recurringJobs.AddOrUpdate<ClearExpiredDisplayNamesJob>(
+    "clear-expired-display-names",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Daily(3));  // 03:00 UTC daily
+
+recurringJobs.AddOrUpdate<PublishApprovedStoriesJob>(
+    "publish-approved-stories",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Minutely());  // check every minute for scheduled publishes
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();

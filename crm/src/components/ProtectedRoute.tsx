@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 interface Props { children: React.ReactNode }
 
 export default function ProtectedRoute({ children }: Props) {
-  const { accessToken, isAdmin } = useAuthStore()
-  if (!accessToken || !isAdmin()) return <Navigate to="/login" replace />
+  const { accessToken, hasAnyCrmRole } = useAuthStore()
+  if (!accessToken || !hasAnyCrmRole()) return <Navigate to="/login" replace />
   return <>{children}</>
 }

@@ -35,7 +35,14 @@ internal static class StoryMapper
             upvoteCount,
             downvoteCount,
             currentUserVote,
-            isBookmarked
+            isBookmarked,
+            s.AuthorId,
+            s.Status,
+            s.SubmittedAt,
+            s.ReviewedBy,
+            s.ReviewedAt,
+            s.RejectionReason,
+            s.AssignedSupervisorId
         );
     }
 }

@@ -146,7 +146,8 @@ public class AuthController : ControllerBase
             user.FirstName, user.LastName, roles,
             user.CreditBalance, user.ActiveTitle,
             user.ActiveAvatarFrameUrl, user.AvatarUrl,
-            user.FavoriteQuote, user.MentionHandle
+            user.FavoriteQuote, user.MentionHandle, user.DisplayName,
+            user.DisplayNameExpiresAt
         ));
     }
 
@@ -198,7 +199,54 @@ public class AuthController : ControllerBase
             user.FirstName, user.LastName, roles,
             user.CreditBalance, user.ActiveTitle,
             user.ActiveAvatarFrameUrl, user.AvatarUrl,
-            user.FavoriteQuote, user.MentionHandle
+            user.FavoriteQuote, user.MentionHandle, user.DisplayName,
+            user.DisplayNameExpiresAt
+        ));
+    }
+
+    [HttpPatch("profile/display-name")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> ChangeDisplayName(
+        [FromBody] ChangeDisplayNameRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        // Require a NameChange ticket
+        var ticket = await _db.UserRewards
+            .Include(ur => ur.RewardItem)
+            .Where(ur => ur.UserId == userId && ur.RewardItem.Category == "NameChange")
+            .FirstOrDefaultAsync(ct);
+
+        if (ticket is null)
+            return Problem("You need a Name Change Ticket to change your display name.",
+                statusCode: StatusCodes.Status400BadRequest);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Unauthorized();
+
+        // Duration in days is stored in RewardItem.Value; default 30 days
+        var durationDays = int.TryParse(ticket.RewardItem.Value, out var d) && d > 0 ? d : 30;
+
+        var trimmed = request.DisplayName.Trim();
+        user.DisplayName = trimmed.Length == 0 ? null : trimmed[..Math.Min(trimmed.Length, 100)];
+        user.DisplayNameExpiresAt = DateTime.UtcNow.AddDays(durationDays);
+
+        // Consume the ticket (delete so it can be repurchased)
+        _db.UserRewards.Remove(ticket);
+
+        await _userManager.UpdateAsync(user);
+        await _db.SaveChangesAsync(ct);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new UserDto(
+            user.Id, user.Email ?? string.Empty,
+            user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle,
+            user.ActiveAvatarFrameUrl, user.AvatarUrl,
+            user.FavoriteQuote, user.MentionHandle, user.DisplayName,
+            user.DisplayNameExpiresAt
         ));
     }
 
@@ -215,4 +263,5 @@ public class AuthController : ControllerBase
 }
 
 public record UpdateProfileRequest(string? FavoriteQuote);
+public record ChangeDisplayNameRequest(string DisplayName);
 public record UserStatsDto(int AllTimeCredits, int LeaderboardPosition);

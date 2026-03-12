@@ -16,5 +16,6 @@ public record UpdateStoryCommand(
     int CategoryId,
     DateTime? PublishDate,
     bool IsPublish,
-    List<int> TagIds
+    List<int> TagIds,
+    string? AssignedSupervisorId = null
 ) : IRequest<Result<StoryDto>>;

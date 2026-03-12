@@ -1,275 +1,223 @@
+using Dapper;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using UpToU.Core.Commands.Admin;
 using UpToU.Core.DTOs.Admin;
+using UpToU.Core.Interfaces;
 using UpToU.Core.Models;
-using UpToU.Infrastructure.Data;
 
 namespace UpToU.Infrastructure.Handlers.Admin;
 
 public class GetReportsHandler : IRequestHandler<GetReportsQuery, Result<ReportDto>>
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IDbConnectionFactory _db;
 
-    public GetReportsHandler(ApplicationDbContext db) => _db = db;
+    public GetReportsHandler(IDbConnectionFactory db) => _db = db;
 
     public async Task<Result<ReportDto>> Handle(GetReportsQuery request, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
-        var weekAgo = now.AddDays(-7);
-        var monthAgo = now.AddDays(-30);
-        var trendWindow = now.AddDays(-7);
+        // Each helper opens its own connection from the pool → true parallelism via Task.WhenAll
+        var overviewTask         = GetOverviewAsync(ct);
+        var topStoriesTask       = GetTopStoriesAsync(ct);
+        var trendingStoriesTask  = GetTrendingStoriesAsync(ct);
+        var mostActiveUsersTask  = GetMostActiveUsersAsync(ct);
+        var categoryStatsTask    = GetCategoryStatsAsync(ct);
+        var reactionDistTask     = GetReactionDistributionAsync(ct);
 
-        // ── Run all independent queries in parallel ─────────────────────────
-        var totalUsersTask    = _db.Users.CountAsync(ct);
-        var newWeekTask       = _db.Users.CountAsync(u => u.CreatedAt >= weekAgo, ct);
-        var newMonthTask      = _db.Users.CountAsync(u => u.CreatedAt >= monthAgo, ct);
-        var totalStoriesTask  = _db.Stories.IgnoreQueryFilters().CountAsync(ct);
-        var publishedTask     = _db.Stories.CountAsync(ct); // global filter: IsPublish && !IsDeleted
-        var totalViewsTask    = _db.Stories.SumAsync(s => (long)s.ViewCount, ct);
-        var totalCommentsTask = _db.Comments.CountAsync(ct);
-        var totalReactTask    = _db.Reactions.CountAsync(ct);
-        var totalVotesTask    = _db.StoryVotes.CountAsync(ct) ;
-        var totalBmTask       = _db.Bookmarks.CountAsync(ct);
+        await Task.WhenAll(overviewTask, topStoriesTask, trendingStoriesTask,
+                           mostActiveUsersTask, categoryStatsTask, reactionDistTask);
 
-        await Task.WhenAll(
-            totalUsersTask, newWeekTask, newMonthTask,
-            totalStoriesTask, publishedTask, totalViewsTask,
-            totalCommentsTask, totalReactTask, totalVotesTask, totalBmTask);
+        return Result<ReportDto>.Success(new ReportDto(
+            await overviewTask,
+            await topStoriesTask,
+            await trendingStoriesTask,
+            await mostActiveUsersTask,
+            await categoryStatsTask,
+            await reactionDistTask
+        ));
+    }
 
-        var overview = new SiteOverviewDto(
-            TotalUsers: totalUsersTask.Result,
-            NewUsersThisWeek: newWeekTask.Result,
-            NewUsersThisMonth: newMonthTask.Result,
-            TotalStories: totalStoriesTask.Result,
-            PublishedStories: publishedTask.Result,
-            TotalViews: totalViewsTask.Result,
-            TotalComments: totalCommentsTask.Result,
-            TotalReactions: totalReactTask.Result,
-            TotalVotes: totalVotesTask.Result,
-            TotalBookmarks: totalBmTask.Result
+    // ── Overview ──────────────────────────────────────────────────────────────
+
+    private async Task<SiteOverviewDto> GetOverviewAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT
+                (SELECT COUNT(*)  FROM AspNetUsers)                                                    AS TotalUsers,
+                (SELECT COUNT(*)  FROM AspNetUsers WHERE CreatedAt >= DATEADD(day,-7,GETUTCDATE()))    AS NewUsersThisWeek,
+                (SELECT COUNT(*)  FROM AspNetUsers WHERE CreatedAt >= DATEADD(day,-30,GETUTCDATE()))   AS NewUsersThisMonth,
+                (SELECT COUNT(*)  FROM Stories WHERE IsDeleted = 0)                                    AS PublishedStories,
+                (SELECT COUNT(*)  FROM Stories)                                                        AS TotalStories,
+                (SELECT ISNULL(SUM(CAST(ViewCount AS bigint)),0) FROM Stories WHERE IsDeleted = 0)     AS TotalViews,
+                (SELECT COUNT(*)  FROM Comments  WHERE IsDeleted = 0)                                  AS TotalComments,
+                (SELECT COUNT(*)  FROM Reactions)                                                      AS TotalReactions,
+                (SELECT COUNT(*)  FROM StoryVotes)                                                     AS TotalVotes,
+                (SELECT COUNT(*)  FROM Bookmarks)                                                      AS TotalBookmarks
+            """;
+
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var row = await conn!.QuerySingleAsync<dynamic>(sql);
+
+        return new SiteOverviewDto(
+            TotalUsers:        (int)row.TotalUsers,
+            NewUsersThisWeek:  (int)row.NewUsersThisWeek,
+            NewUsersThisMonth: (int)row.NewUsersThisMonth,
+            TotalStories:      (int)row.TotalStories,
+            PublishedStories:  (int)row.PublishedStories,
+            TotalViews:        (long)row.TotalViews,
+            TotalComments:     (int)row.TotalComments,
+            TotalReactions:    (int)row.TotalReactions,
+            TotalVotes:        (int)row.TotalVotes,
+            TotalBookmarks:    (int)row.TotalBookmarks
         );
+    }
 
-        // ── Top 10 stories by view count ────────────────────────────────────
-        var storyIds = await _db.Stories
-            .AsNoTracking()
-            .Include(s => s.Category)
-            .OrderByDescending(s => s.ViewCount)
-            .Take(10)
-            .Select(s => s.Id)
-            .ToListAsync(ct);
+    // ── Top Stories ───────────────────────────────────────────────────────────
 
-        var storiesRaw = await _db.Stories
-            .AsNoTracking()
-            .Include(s => s.Category)
-            .Where(s => storyIds.Contains(s.Id))
-            .ToListAsync(ct);
-
-        var commentCounts = await _db.Comments
-            .Where(c => storyIds.Contains(c.StoryId))
-            .GroupBy(c => c.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.StoryId, x => x.Count, ct);
-
-        var reactionCounts = await _db.Reactions
-            .Where(r => storyIds.Contains(r.StoryId))
-            .GroupBy(r => r.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.StoryId, x => x.Count, ct);
-
-        var voteBreakdown = await _db.StoryVotes
-            .Where(v => storyIds.Contains(v.StoryId))
-            .GroupBy(v => new { v.StoryId, v.VoteType })
-            .Select(g => new { g.Key.StoryId, g.Key.VoteType, Count = g.Count() })
-            .ToListAsync(ct);
-
-        var bookmarkCounts = await _db.Bookmarks
-            .Where(b => storyIds.Contains(b.StoryId))
-            .GroupBy(b => b.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.StoryId, x => x.Count, ct);
-
-        var topStories = storiesRaw
-            .OrderByDescending(s => s.ViewCount)
-            .Select(s => new StoryStatsDto(
-                s.Id,
-                s.Title,
-                s.Category?.Title ?? string.Empty,
+    private async Task<List<StoryStatsDto>> GetTopStoriesAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT TOP 10
+                s.Id, s.Title,
+                ISNULL(c.Title, '')       AS CategoryTitle,
                 s.CoverImageUrl,
                 s.AuthorName,
                 s.ViewCount,
-                commentCounts.GetValueOrDefault(s.Id, 0),
-                reactionCounts.GetValueOrDefault(s.Id, 0),
-                voteBreakdown.FirstOrDefault(v => v.StoryId == s.Id && v.VoteType == "Up")?.Count ?? 0,
-                voteBreakdown.FirstOrDefault(v => v.StoryId == s.Id && v.VoteType == "Down")?.Count ?? 0,
-                bookmarkCounts.GetValueOrDefault(s.Id, 0),
+                COUNT(DISTINCT cm.Id)     AS CommentCount,
+                COUNT(DISTINCT r.Id)      AS ReactionCount,
+                SUM(CASE WHEN sv.VoteType='Up'   THEN 1 ELSE 0 END) AS UpvoteCount,
+                SUM(CASE WHEN sv.VoteType='Down' THEN 1 ELSE 0 END) AS DownvoteCount,
+                COUNT(DISTINCT b.Id)      AS BookmarkCount,
                 s.PublishDate
-            )).ToList();
+            FROM Stories s
+            LEFT JOIN Categories c  ON c.Id = s.CategoryId AND c.IsDeleted = 0
+            LEFT JOIN Comments   cm ON cm.StoryId = s.Id   AND cm.IsDeleted = 0
+            LEFT JOIN Reactions  r  ON r.StoryId  = s.Id
+            LEFT JOIN StoryVotes sv ON sv.StoryId  = s.Id
+            LEFT JOIN Bookmarks  b  ON b.StoryId   = s.Id
+            WHERE s.IsDeleted = 0
+            GROUP BY s.Id, s.Title, c.Title, s.CoverImageUrl, s.AuthorName, s.ViewCount, s.PublishDate
+            ORDER BY s.ViewCount DESC
+            """;
 
-        // ── Trending: stories with most engagement in last 7 days ───────────
-        var recentCommentStoryIds = await _db.Comments
-            .Where(c => c.CreatedAt >= trendWindow)
-            .GroupBy(c => c.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var rows = await conn!.QueryAsync<StoryStatsDto>(sql);
+        return rows.ToList();
+    }
 
-        var recentReactionStoryIds = await _db.Reactions
-            .Where(r => r.CreatedAt >= trendWindow)
-            .GroupBy(r => r.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+    // ── Trending Stories (last 7 days) ────────────────────────────────────────
 
-        var recentVoteStoryIds = await _db.StoryVotes
-            .Where(v => v.CreatedAt >= trendWindow)
-            .GroupBy(v => v.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+    private async Task<List<TrendingStoryDto>> GetTrendingStoriesAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT TOP 10
+                s.Id, s.Title,
+                ISNULL(c.Title, '')  AS CategoryTitle,
+                s.CoverImageUrl,
+                COUNT(DISTINCT cm.Id) * 5
+                  + COUNT(DISTINCT r.Id)  * 3
+                  + COUNT(DISTINCT sv.Id) * 2
+                  + COUNT(DISTINCT b.Id)  * 4  AS TrendScore,
+                COUNT(DISTINCT cm.Id) AS RecentComments,
+                COUNT(DISTINCT r.Id)  AS RecentReactions,
+                COUNT(DISTINCT sv.Id) AS RecentVotes,
+                COUNT(DISTINCT b.Id)  AS RecentBookmarks
+            FROM Stories s
+            LEFT JOIN Categories c  ON c.Id = s.CategoryId AND c.IsDeleted = 0
+            LEFT JOIN Comments   cm ON cm.StoryId = s.Id AND cm.IsDeleted = 0
+                                    AND cm.CreatedAt >= DATEADD(day,-7,GETUTCDATE())
+            LEFT JOIN Reactions  r  ON r.StoryId  = s.Id
+                                    AND r.CreatedAt  >= DATEADD(day,-7,GETUTCDATE())
+            LEFT JOIN StoryVotes sv ON sv.StoryId  = s.Id
+                                    AND sv.CreatedAt >= DATEADD(day,-7,GETUTCDATE())
+            LEFT JOIN Bookmarks  b  ON b.StoryId   = s.Id
+                                    AND b.CreatedAt  >= DATEADD(day,-7,GETUTCDATE())
+            WHERE s.IsDeleted = 0
+            GROUP BY s.Id, s.Title, c.Title, s.CoverImageUrl
+            HAVING COUNT(DISTINCT cm.Id) + COUNT(DISTINCT r.Id)
+                 + COUNT(DISTINCT sv.Id) + COUNT(DISTINCT b.Id) > 0
+            ORDER BY TrendScore DESC
+            """;
 
-        var recentBookmarkStoryIds = await _db.Bookmarks
-            .Where(b => b.CreatedAt >= trendWindow)
-            .GroupBy(b => b.StoryId)
-            .Select(g => new { StoryId = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var rows = await conn!.QueryAsync<TrendingStoryDto>(sql);
+        return rows.ToList();
+    }
 
-        var allTrendIds = recentCommentStoryIds.Select(x => x.StoryId)
-            .Union(recentReactionStoryIds.Select(x => x.StoryId))
-            .Union(recentVoteStoryIds.Select(x => x.StoryId))
-            .Union(recentBookmarkStoryIds.Select(x => x.StoryId))
-            .Distinct()
-            .ToList();
+    // ── Most Active Users ─────────────────────────────────────────────────────
 
-        var trendStories = await _db.Stories
-            .AsNoTracking()
-            .Include(s => s.Category)
-            .Where(s => allTrendIds.Contains(s.Id))
-            .ToListAsync(ct);
+    private async Task<List<UserActivityDto>> GetMostActiveUsersAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT TOP 10
+                u.Id,
+                u.FirstName + ' ' + u.LastName   AS Name,
+                ISNULL(u.Email, '')               AS Email,
+                u.MentionHandle,
+                u.CreatedAt,
+                COUNT(DISTINCT cm.Id)  AS CommentCount,
+                COUNT(DISTINCT r.Id)   AS ReactionCount,
+                COUNT(DISTINCT sv.Id)  AS VoteCount,
+                COUNT(DISTINCT b.Id)   AS BookmarkCount,
+                COUNT(DISTINCT cm.Id) + COUNT(DISTINCT r.Id)
+                  + COUNT(DISTINCT sv.Id) + COUNT(DISTINCT b.Id) AS TotalActivity
+            FROM AspNetUsers u
+            LEFT JOIN Comments   cm ON cm.AuthorId = u.Id AND cm.IsDeleted = 0
+            LEFT JOIN Reactions  r  ON r.UserId    = u.Id
+            LEFT JOIN StoryVotes sv ON sv.UserId   = u.Id
+            LEFT JOIN Bookmarks  b  ON b.UserId    = u.Id
+            GROUP BY u.Id, u.FirstName, u.LastName, u.Email, u.MentionHandle, u.CreatedAt
+            HAVING COUNT(DISTINCT cm.Id) + COUNT(DISTINCT r.Id)
+                 + COUNT(DISTINCT sv.Id) + COUNT(DISTINCT b.Id) > 0
+            ORDER BY TotalActivity DESC
+            """;
 
-        var trendLookupC = recentCommentStoryIds.ToDictionary(x => x.StoryId, x => x.Count);
-        var trendLookupR = recentReactionStoryIds.ToDictionary(x => x.StoryId, x => x.Count);
-        var trendLookupV = recentVoteStoryIds.ToDictionary(x => x.StoryId, x => x.Count);
-        var trendLookupB = recentBookmarkStoryIds.ToDictionary(x => x.StoryId, x => x.Count);
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var rows = await conn!.QueryAsync<UserActivityDto>(sql);
+        return rows.ToList();
+    }
 
-        var trendingStories = trendStories
-            .Select(s =>
-            {
-                int c = trendLookupC.GetValueOrDefault(s.Id, 0);
-                int r = trendLookupR.GetValueOrDefault(s.Id, 0);
-                int v = trendLookupV.GetValueOrDefault(s.Id, 0);
-                int b = trendLookupB.GetValueOrDefault(s.Id, 0);
-                int score = c * 5 + r * 3 + v * 2 + b * 4;
-                return new TrendingStoryDto(s.Id, s.Title, s.Category?.Title ?? string.Empty, s.CoverImageUrl, score, c, r, v, b);
-            })
-            .OrderByDescending(t => t.TrendScore)
-            .Take(10)
-            .ToList();
+    // ── Category Stats ────────────────────────────────────────────────────────
 
-        // ── Most active users ────────────────────────────────────────────────
-        var userComments = await _db.Comments
-            .GroupBy(c => c.AuthorId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+    private async Task<List<CategoryStatsDto>> GetCategoryStatsAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT
+                c.Id,
+                c.Title,
+                COUNT(DISTINCT s.Id)                                  AS StoryCount,
+                ISNULL(SUM(CAST(s.ViewCount AS bigint)), 0)           AS TotalViews,
+                COUNT(DISTINCT cm.Id)                                 AS TotalComments,
+                COUNT(DISTINCT r.Id)                                  AS TotalReactions,
+                COUNT(DISTINCT b.Id)                                  AS TotalBookmarks
+            FROM Categories c
+            LEFT JOIN Stories    s  ON s.CategoryId = c.Id AND s.IsDeleted = 0
+            LEFT JOIN Comments   cm ON cm.StoryId   = s.Id AND cm.IsDeleted = 0
+            LEFT JOIN Reactions  r  ON r.StoryId    = s.Id
+            LEFT JOIN Bookmarks  b  ON b.StoryId    = s.Id
+            WHERE c.IsDeleted = 0
+            GROUP BY c.Id, c.Title
+            ORDER BY TotalViews DESC
+            """;
 
-        var userReactions = await _db.Reactions
-            .GroupBy(r => r.UserId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var rows = await conn!.QueryAsync<CategoryStatsDto>(sql);
+        return rows.ToList();
+    }
 
-        var userVotes = await _db.StoryVotes
-            .GroupBy(v => v.UserId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+    // ── Reaction Distribution ─────────────────────────────────────────────────
 
-        var userBookmarks = await _db.Bookmarks
-            .GroupBy(b => b.UserId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+    private async Task<ReactionDistributionDto> GetReactionDistributionAsync(CancellationToken ct)
+    {
+        const string sql = """
+            SELECT
+                SUM(CASE WHEN ReactionType = 'Like'  THEN 1 ELSE 0 END) AS LikeCount,
+                SUM(CASE WHEN ReactionType = 'Love'  THEN 1 ELSE 0 END) AS LoveCount,
+                SUM(CASE WHEN ReactionType = 'Laugh' THEN 1 ELSE 0 END) AS LaughCount
+            FROM Reactions
+            """;
 
-        var allActiveUserIds = userComments.Keys
-            .Union(userReactions.Keys)
-            .Union(userVotes.Keys)
-            .ToList();
-
-        var activeUsers = await _db.Users
-            .Where(u => allActiveUserIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.FirstName, u.LastName, Email = u.Email ?? string.Empty, u.MentionHandle, u.CreatedAt })
-            .ToListAsync(ct);
-
-        var mostActiveUsers = activeUsers
-            .Select(u =>
-            {
-                int c = userComments.GetValueOrDefault(u.Id, 0);
-                int r = userReactions.GetValueOrDefault(u.Id, 0);
-                int v = userVotes.GetValueOrDefault(u.Id, 0);
-                int b = userBookmarks.GetValueOrDefault(u.Id, 0);
-                return new UserActivityDto(u.Id, $"{u.FirstName} {u.LastName}", u.Email ?? string.Empty, u.MentionHandle, u.CreatedAt, c, r, v, b, c + r + v + b);
-            })
-            .OrderByDescending(u => u.TotalActivity)
-            .Take(10)
-            .ToList();
-
-        // ── Category engagement ──────────────────────────────────────────────
-        var publishedStories = await _db.Stories
-            .AsNoTracking()
-            .Include(s => s.Category)
-            .Select(s => new { s.Id, s.CategoryId, CategoryTitle = s.Category!.Title, s.ViewCount })
-            .ToListAsync(ct);
-
-        var allPublishedIds = publishedStories.Select(s => s.Id).ToList();
-
-        var catComments = await _db.Comments
-            .Where(c => allPublishedIds.Contains(c.StoryId))
-            .Join(_db.Stories, c => c.StoryId, s => s.Id, (c, s) => s.CategoryId)
-            .GroupBy(catId => catId)
-            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.CategoryId, x => x.Count, ct);
-
-        var catReactions = await _db.Reactions
-            .Where(r => allPublishedIds.Contains(r.StoryId))
-            .Join(_db.Stories, r => r.StoryId, s => s.Id, (r, s) => s.CategoryId)
-            .GroupBy(catId => catId)
-            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.CategoryId, x => x.Count, ct);
-
-        var catBookmarks = await _db.Bookmarks
-            .Where(b => allPublishedIds.Contains(b.StoryId))
-            .Join(_db.Stories, b => b.StoryId, s => s.Id, (b, s) => s.CategoryId)
-            .GroupBy(catId => catId)
-            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.CategoryId, x => x.Count, ct);
-
-        var categoryStats = publishedStories
-            .GroupBy(s => new { s.CategoryId, s.CategoryTitle })
-            .Select(g => new CategoryStatsDto(
-                g.Key.CategoryId,
-                g.Key.CategoryTitle,
-                g.Count(),
-                g.Sum(s => (long)s.ViewCount),
-                catComments.GetValueOrDefault(g.Key.CategoryId, 0),
-                catReactions.GetValueOrDefault(g.Key.CategoryId, 0),
-                catBookmarks.GetValueOrDefault(g.Key.CategoryId, 0)
-            ))
-            .OrderByDescending(c => c.TotalViews)
-            .ToList();
-
-        // ── Reaction distribution ────────────────────────────────────────────
-        var reactionDist = await _db.Reactions
-            .GroupBy(r => r.ReactionType)
-            .Select(g => new { Type = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
-
-        var reactionDistribution = new ReactionDistributionDto(
-            reactionDist.FirstOrDefault(r => r.Type == "Like")?.Count ?? 0,
-            reactionDist.FirstOrDefault(r => r.Type == "Love")?.Count ?? 0,
-            reactionDist.FirstOrDefault(r => r.Type == "Laugh")?.Count ?? 0
-        );
-
-        return Result<ReportDto>.Success(new ReportDto(
-            overview,
-            topStories,
-            trendingStories,
-            mostActiveUsers,
-            categoryStats,
-            reactionDistribution
-        ));
+        await using var conn = (await _db.OpenAsync(ct)) as System.Data.Common.DbConnection;
+        var row = await conn!.QuerySingleAsync<ReactionDistributionDto>(sql);
+        return row;
     }
 }

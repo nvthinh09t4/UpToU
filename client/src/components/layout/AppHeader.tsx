@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Trophy } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/button';
@@ -7,6 +8,7 @@ import { CreditBadge } from '../credits/CreditBadge';
 import { UserMenu } from './UserMenu';
 
 export function AppHeader() {
+  const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return (
@@ -19,7 +21,7 @@ export function AppHeader() {
             className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <Trophy className="h-4 w-4" />
-            <span className="hidden sm:inline">Leaderboard</span>
+            <span className="hidden sm:inline">{t('nav.leaderboard')}</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -31,7 +33,7 @@ export function AppHeader() {
             </>
           ) : (
             <Link to="/login">
-              <Button size="sm">Sign In</Button>
+              <Button size="sm">{t('nav.signIn')}</Button>
             </Link>
           )}
         </div>

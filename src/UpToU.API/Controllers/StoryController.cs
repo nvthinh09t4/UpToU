@@ -7,6 +7,9 @@ using UpToU.Core.DTOs.Vote;
 
 namespace UpToU.API.Controllers;
 
+public record ApproveRequest(DateTime? PublishDate);
+public record RejectRequest(string Reason);
+
 [ApiController]
 [Route("api/v1")]
 public class StoryController : ControllerBase
@@ -71,7 +74,7 @@ public class StoryController : ControllerBase
     // ── Admin endpoints ───────────────────────────────────────────────────────
 
     [HttpGet("admin/stories")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<List<StoryDto>>> GetAdminStories([FromQuery] int? categoryId, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetAdminStoriesQuery(categoryId), ct);
@@ -79,7 +82,7 @@ public class StoryController : ControllerBase
     }
 
     [HttpPost("admin/stories")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<StoryDto>> CreateStory([FromBody] CreateStoryCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
@@ -89,7 +92,7 @@ public class StoryController : ControllerBase
     }
 
     [HttpPut("admin/stories/{id:int}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<StoryDto>> UpdateStory(int id, [FromBody] UpdateStoryCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command with { Id = id }, ct);
@@ -97,7 +100,7 @@ public class StoryController : ControllerBase
     }
 
     [HttpDelete("admin/stories/{id:int}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "StaffOrAdmin")]
     public async Task<ActionResult> DeleteStory(int id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteStoryCommand(id), ct);
@@ -105,7 +108,7 @@ public class StoryController : ControllerBase
     }
 
     [HttpGet("admin/stories/{storyId:int}/details")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<List<StoryDetailDto>>> GetStoryDetails(int storyId, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetStoryDetailsQuery(storyId), ct);
@@ -113,13 +116,55 @@ public class StoryController : ControllerBase
     }
 
     [HttpPost("admin/stories/{storyId:int}/details")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<StoryDetailDto>> AddStoryDetail(
         int storyId,
         [FromBody] AddStoryDetailCommand command,
         CancellationToken ct)
     {
         var result = await _mediator.Send(command with { StoryId = storyId }, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── Tag admin endpoints ───────────────────────────────────────────────────
+
+    // ── Workflow endpoints (Contributor / Supervisor) ─────────────────────────
+
+    /// <summary>Submit a story for supervisor review. Locks editing until reviewed.</summary>
+    [HttpPost("admin/stories/{id:int}/submit")]
+    [Authorize(Policy = "ContributorOrAbove")]
+    public async Task<ActionResult<StoryDto>> SubmitStory(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SubmitStoryCommand(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    /// <summary>Approve a submitted story. Optionally schedule a future publish date.</summary>
+    [HttpPost("admin/stories/{id:int}/approve")]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<ActionResult<StoryDto>> ApproveStory(
+        int id, [FromBody] ApproveRequest body, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ApproveStoryCommand(id, body.PublishDate), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    /// <summary>Reject a submitted story with a reason. Author may edit and re-submit.</summary>
+    [HttpPost("admin/stories/{id:int}/reject")]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<ActionResult<StoryDto>> RejectStory(
+        int id, [FromBody] RejectRequest body, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new RejectStoryCommand(id, body.Reason), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    /// <summary>Returns all stories currently awaiting supervisor review.</summary>
+    [HttpGet("admin/stories/submitted")]
+    [Authorize(Policy = "StaffOnly")]
+    public async Task<ActionResult<List<StoryDto>>> GetSubmittedStories(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetSubmittedStoriesQuery(), ct);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
 

@@ -21,7 +21,7 @@ export interface RewardItem {
   id: number;
   name: string;
   description: string | null;
-  category: 'Title' | 'AvatarFrame' | 'Avatar' | 'StoryAccess';
+  category: 'Title' | 'AvatarFrame' | 'Avatar' | 'StoryAccess' | 'NameChange';
   creditCost: number;
   value: string | null;
   previewUrl: string | null;

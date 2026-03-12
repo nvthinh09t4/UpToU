@@ -43,8 +43,11 @@ internal static class LeaderboardHelper
             kvp =>
             {
                 var u = kvp.Value;
+                var effectiveDisplayName = (u.DisplayNameExpiresAt.HasValue && u.DisplayNameExpiresAt <= DateTime.UtcNow)
+                    ? null
+                    : u.DisplayName;
                 return new UserProfile(
-                    $"{u.FirstName} {u.LastName}".Trim(),
+                    effectiveDisplayName ?? $"{u.FirstName} {u.LastName}".Trim(),
                     u.MentionHandle,
                     u.ActiveTitle,
                     u.ActiveAvatarFrameUrl,

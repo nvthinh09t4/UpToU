@@ -28,6 +28,15 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
         builder.Property(s => s.StoryType).HasMaxLength(20).HasDefaultValue("Article");
         builder.HasIndex(s => s.StoryType);
 
+        builder.Property(s => s.AuthorId).HasMaxLength(450);
+        builder.Property(s => s.Status).HasMaxLength(20).HasDefaultValue("Draft").IsRequired();
+        builder.Property(s => s.ReviewedBy).HasMaxLength(450);
+        builder.Property(s => s.RejectionReason).HasMaxLength(2000);
+        builder.Property(s => s.AssignedSupervisorId).HasMaxLength(450);
+        builder.HasIndex(s => s.Status);
+        builder.HasIndex(s => s.AuthorId);
+        builder.HasIndex(s => s.AssignedSupervisorId);
+
         builder.HasQueryFilter(s => !s.IsDeleted);
 
         builder.HasOne(s => s.Category)

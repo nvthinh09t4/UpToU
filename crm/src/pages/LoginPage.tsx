@@ -23,8 +23,10 @@ export default function LoginPage() {
     try {
       const res = await authService.login(email, password)
       const { accessToken, user } = res.data
-      if (!user.roles.includes('Admin')) {
-        setError('Access denied. Admin account required.')
+      const CRM_ROLES = ['Admin', 'Senior Supervisor', 'Supervisor', 'Contributor']
+      const hasCrmRole = CRM_ROLES.some((r) => user.roles.includes(r))
+      if (!hasCrmRole) {
+        setError('Access denied. You must be assigned a CRM role by an administrator before logging in here.')
         return
       }
       setAuth(accessToken, user)
@@ -48,7 +50,7 @@ export default function LoginPage() {
               <LockOutlinedIcon sx={{ color: 'white' }} />
             </Box>
             <Typography variant="h5" fontWeight={700}>UpToU CRM</Typography>
-            <Typography variant="body2" color="text.secondary">Admin Panel</Typography>
+            <Typography variant="body2" color="text.secondary">Staff Portal</Typography>
           </Box>
 
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

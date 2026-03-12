@@ -11,5 +11,7 @@ public record UserDto(
     string? ActiveAvatarFrameUrl = null,
     string? AvatarUrl = null,
     string? FavoriteQuote = null,
-    string? MentionHandle = null
+    string? MentionHandle = null,
+    string? DisplayName = null,
+    DateTime? DisplayNameExpiresAt = null
 );

@@ -31,6 +31,9 @@ export const authApi = {
   updateProfile: (data: { favoriteQuote?: string }) =>
     apiClient.patch<UserDto>('/auth/profile', data),
 
+  changeDisplayName: (displayName: string) =>
+    apiClient.patch<UserDto>('/auth/profile/display-name', { displayName }),
+
   getExternalLoginUrl: (provider: 'google' | 'facebook', returnUrl: string) =>
     `${BASE_URL}/api/v1/auth/external-login?provider=${provider}&returnUrl=${encodeURIComponent(returnUrl)}`,
 };

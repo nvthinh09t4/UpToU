@@ -25,5 +25,13 @@ public record StoryDto(
     int UpvoteCount,
     int DownvoteCount,
     string? CurrentUserVote,
-    bool IsBookmarked
+    bool IsBookmarked,
+    // Workflow
+    string? AuthorId,
+    string  Status,
+    DateTime? SubmittedAt,
+    string?   ReviewedBy,
+    DateTime? ReviewedAt,
+    string?   RejectionReason,
+    string?   AssignedSupervisorId
 );

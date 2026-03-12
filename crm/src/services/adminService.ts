@@ -8,6 +8,10 @@ export const adminService = {
   getUsers: (params: { page?: number; pageSize?: number; search?: string; role?: string }) =>
     apiClient.get<PagedResult<AdminUser>>('/admin/users', { params }),
 
+  /** Fetch all users with Supervisor or Senior Supervisor roles for story assignment */
+  getSupervisors: () =>
+    apiClient.get<PagedResult<AdminUser>>('/admin/users', { params: { pageSize: 100, role: 'Supervisor' } }),
+
   getUser: (id: string) =>
     apiClient.get<AdminUser>(`/admin/users/${id}`),
 
@@ -60,10 +64,24 @@ export const adminService = {
     title: string; slug: string | null; description: string | null; excerpt: string | null
     coverImageUrl: string | null; authorName: string | null; isFeatured: boolean
     categoryId: number; publishDate: string | null; isPublish: boolean; tagIds: number[]
+    assignedSupervisorId?: string | null
   }) => apiClient.put<Story>(`/admin/stories/${id}`, data),
 
   deleteStory: (id: number) =>
     apiClient.delete(`/admin/stories/${id}`),
+
+  // ── Story workflow ────────────────────────────────────────────────────────
+  submitStory: (id: number) =>
+    apiClient.post<Story>(`/admin/stories/${id}/submit`, {}),
+
+  approveStory: (id: number, publishDate: string | null) =>
+    apiClient.post<Story>(`/admin/stories/${id}/approve`, { publishDate }),
+
+  rejectStory: (id: number, reason: string) =>
+    apiClient.post<Story>(`/admin/stories/${id}/reject`, { reason }),
+
+  getSubmittedStories: () =>
+    apiClient.get<Story[]>('/admin/stories/submitted'),
 
   getStoryDetails: (storyId: number) =>
     apiClient.get<StoryDetail[]>(`/admin/stories/${storyId}/details`),

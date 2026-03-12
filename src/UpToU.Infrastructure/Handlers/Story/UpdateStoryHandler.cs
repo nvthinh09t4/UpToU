@@ -25,6 +25,12 @@ public class UpdateStoryHandler : IRequestHandler<UpdateStoryCommand, Result<Sto
         if (story is null)
             return Result<StoryDto>.NotFound("Story not found.");
 
+        if (story.Status == StoryStatus.Submitted)
+            return Result<StoryDto>.Conflict("Story is under review. Reject it first before editing.");
+
+        if (story.Status == StoryStatus.Rejected)
+            story.Status = StoryStatus.Draft;
+
         var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId, ct);
         if (!categoryExists)
             return Result<StoryDto>.NotFound("Category not found.");
@@ -43,6 +49,7 @@ public class UpdateStoryHandler : IRequestHandler<UpdateStoryCommand, Result<Sto
         story.CategoryId = request.CategoryId;
         story.PublishDate = request.PublishDate;
         story.IsPublish = request.IsPublish;
+        story.AssignedSupervisorId = request.AssignedSupervisorId;
         story.ModifiedOn = DateTime.UtcNow;
         story.Tags = tags;
 

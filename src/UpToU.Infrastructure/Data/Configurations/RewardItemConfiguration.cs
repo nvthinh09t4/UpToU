@@ -13,8 +13,8 @@ public class RewardItemConfiguration : IEntityTypeConfiguration<RewardItem>
         builder.Property(r => r.Name).IsRequired().HasMaxLength(100);
         builder.Property(r => r.Description).HasMaxLength(500);
         builder.Property(r => r.Category).IsRequired().HasMaxLength(30);
-        builder.Property(r => r.Value).HasMaxLength(500);
-        builder.Property(r => r.PreviewUrl).HasMaxLength(500);
+        builder.Property(r => r.Value).HasMaxLength(2048);
+        builder.Property(r => r.PreviewUrl).HasMaxLength(2048);
 
         builder.HasIndex(r => r.Category);
     }

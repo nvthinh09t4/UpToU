@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using UpToU.Core.Commands.Admin;
 using UpToU.Core.Commands.Credit;
 using UpToU.Core.DTOs.Admin;
@@ -10,7 +11,7 @@ namespace UpToU.API.Controllers;
 
 [ApiController]
 [Route("api/v1/admin")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize]
 public class AdminController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -20,6 +21,7 @@ public class AdminController : ControllerBase
     // ── Dashboard ─────────────────────────────────────────────────────────────
 
     [HttpGet("dashboard")]
+    [Authorize(Policy = "StaffOrAdmin")]
     public async Task<ActionResult<DashboardStatsDto>> GetDashboard(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetDashboardStatsQuery(), ct);
@@ -29,6 +31,7 @@ public class AdminController : ControllerBase
     // ── Users ─────────────────────────────────────────────────────────────────
 
     [HttpGet("users")]
+    [Authorize(Policy = "SeniorSupervisorOrAdmin")]
     public async Task<ActionResult<PagedResult<AdminUserDto>>> GetUsers(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -41,6 +44,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("users/{id}")]
+    [Authorize(Policy = "SeniorSupervisorOrAdmin")]
     public async Task<ActionResult<AdminUserDto>> GetUser(string id, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetUserByIdQuery(id), ct);
@@ -48,16 +52,30 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{id}")]
+    [Authorize(Policy = "SeniorSupervisorOrAdmin")]
     public async Task<ActionResult<AdminUserDto>> UpdateUser(
         string id,
         [FromBody] UpdateUserCommand command,
         CancellationToken ct)
     {
+        // Senior Supervisors can only assign Supervisor and Contributor roles — not Admin or Senior Supervisor
+        var callerRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (!callerRoles.Contains("Admin"))
+        {
+            var privilegedRoles = new[] { "Admin", "Senior Supervisor" };
+            var forbidden = command.Roles.Intersect(privilegedRoles).ToList();
+            if (forbidden.Count > 0)
+                return Problem(
+                    $"Senior Supervisors cannot assign the following roles: {string.Join(", ", forbidden)}.",
+                    statusCode: StatusCodes.Status403Forbidden);
+        }
+
         var result = await _mediator.Send(command with { UserId = id }, ct);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
 
     [HttpDelete("users/{id}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> DeleteUser(string id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteUserCommand(id), ct);
@@ -67,6 +85,7 @@ public class AdminController : ControllerBase
     // ── Roles ─────────────────────────────────────────────────────────────────
 
     [HttpGet("roles")]
+    [Authorize(Policy = "SeniorSupervisorOrAdmin")]
     public async Task<ActionResult<IList<string>>> GetRoles(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetRolesQuery(), ct);
@@ -74,6 +93,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("roles")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> CreateRole([FromBody] CreateRoleCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
@@ -81,6 +101,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpDelete("roles/{name}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> DeleteRole(string name, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteRoleCommand(name), ct);
@@ -90,6 +111,7 @@ public class AdminController : ControllerBase
     // ── Bans ─────────────────────────────────────────────────────────────────
 
     [HttpGet("bans")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<List<UserBanDto>>> GetBans(
         [FromQuery] string? userId = null,
         CancellationToken ct = default)
@@ -99,6 +121,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("bans")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UserBanDto>> BanUser([FromBody] BanUserCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
@@ -106,6 +129,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("bans/{id:int}/revoke")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> RevokeBan(int id, CancellationToken ct)
     {
         var result = await _mediator.Send(new RevokeUserBanCommand(id), ct);
@@ -115,6 +139,7 @@ public class AdminController : ControllerBase
     // ── Reward Shop Management ─────────────────────────────────────────────────
 
     [HttpGet("rewards")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<List<AdminRewardItemDto>>> GetAdminRewards(
         [FromQuery] string? category = null,
         CancellationToken ct = default)
@@ -124,6 +149,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("rewards")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<AdminRewardItemDto>> CreateReward(
         [FromBody] CreateRewardItemCommand command,
         CancellationToken ct)
@@ -133,6 +159,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("rewards/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<AdminRewardItemDto>> UpdateReward(
         int id,
         [FromBody] UpdateRewardItemCommand command,
@@ -143,6 +170,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpDelete("rewards/{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> DeleteReward(int id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteRewardItemCommand(id), ct);

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Bookmark,
   Bell,
   ChevronRight,
   Gift,
+  Languages,
   LogOut,
   Moon,
   Sun,
+  TrendingUp,
   Trophy,
   User,
 } from 'lucide-react';
@@ -19,27 +22,29 @@ function initials(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+const LANGUAGES = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
+];
+
 export function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { t, i18n } = useTranslation();
 
   const user = useAuthStore((s) => s.user);
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
-  // Close on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
@@ -57,11 +62,16 @@ export function UserMenu() {
     navigate('/');
   }
 
+  function changeLanguage(code: string) {
+    i18n.changeLanguage(code);
+    localStorage.setItem('i18n_lang', code);
+  }
+
   const avatarBg = user.avatarUrl ? undefined : 'bg-primary text-primary-foreground';
+  const currentLang = i18n.language.startsWith('vi') ? 'vi' : 'en';
 
   return (
     <div ref={ref} className="relative">
-      {/* Avatar button */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Open user menu"
@@ -80,7 +90,6 @@ export function UserMenu() {
         )}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
@@ -122,11 +131,12 @@ export function UserMenu() {
 
           {/* Navigation links */}
           <div className="py-1">
-            <MenuItem icon={<User className="h-4 w-4" />} label="My Profile" to="/dashboard" onClose={() => setOpen(false)} />
-            <MenuItem icon={<Bookmark className="h-4 w-4" />} label="Bookmarks" to="/bookmarks" onClose={() => setOpen(false)} />
-            <MenuItem icon={<Bell className="h-4 w-4" />} label="Notifications" to="/notifications" onClose={() => setOpen(false)} />
-            <MenuItem icon={<Gift className="h-4 w-4" />} label="Rewards Shop" to="/rewards" onClose={() => setOpen(false)} />
-            <MenuItem icon={<Trophy className="h-4 w-4" />} label="Leaderboard" to="/leaderboard" onClose={() => setOpen(false)} />
+            <MenuItem icon={<User className="h-4 w-4" />} label={t('userMenu.myProfile')} to="/dashboard" onClose={() => setOpen(false)} />
+            <MenuItem icon={<TrendingUp className="h-4 w-4" />} label={t('userMenu.myProgress')} to="/progress" onClose={() => setOpen(false)} />
+            <MenuItem icon={<Bookmark className="h-4 w-4" />} label={t('userMenu.bookmarks')} to="/bookmarks" onClose={() => setOpen(false)} />
+            <MenuItem icon={<Bell className="h-4 w-4" />} label={t('userMenu.notifications')} to="/notifications" onClose={() => setOpen(false)} />
+            <MenuItem icon={<Gift className="h-4 w-4" />} label={t('userMenu.rewardsShop')} to="/rewards" onClose={() => setOpen(false)} />
+            <MenuItem icon={<Trophy className="h-4 w-4" />} label={t('userMenu.leaderboard')} to="/leaderboard" onClose={() => setOpen(false)} />
           </div>
 
           <div className="border-t border-border py-1">
@@ -141,22 +151,43 @@ export function UserMenu() {
                 <Moon className="h-4 w-4 text-indigo-500" />
               )}
               <span className="flex-1 text-left">
-                {theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {theme === 'dark' ? '☀️' : '🌙'}
+                {theme === 'dark' ? t('userMenu.switchToLight') : t('userMenu.switchToDark')}
               </span>
             </button>
+
+            {/* Language selector */}
+            <div className="px-4 py-2">
+              <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Languages className="h-3.5 w-3.5" />
+                {t('userMenu.language')}
+              </div>
+              <div className="flex gap-1.5">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => changeLanguage(lang.code)}
+                    className={[
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors',
+                      currentLang === lang.code
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                    ].join(' ')}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-border py-1">
-            {/* Log out */}
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 px-4 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
             >
               <LogOut className="h-4 w-4" />
-              Log Out
+              {t('userMenu.logout')}
             </button>
           </div>
         </div>

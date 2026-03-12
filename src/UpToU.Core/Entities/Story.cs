@@ -26,6 +26,21 @@ public class Story
     /// <summary>"Article" | "Interactive"</summary>
     public string StoryType { get; set; } = "Article";
 
+    // ── Workflow ─────────────────────────────────────────────────────────────
+    /// <summary>Id of the user (Contributor/Admin) who created this story.</summary>
+    public string? AuthorId { get; set; }
+
+    /// <summary>Workflow status: Draft | Submitted | Approved | Published | Rejected.</summary>
+    public string Status { get; set; } = StoryStatus.Draft;
+
+    public DateTime? SubmittedAt  { get; set; }
+    public string?   ReviewedBy   { get; set; }
+    public DateTime? ReviewedAt   { get; set; }
+    public string?   RejectionReason { get; set; }
+
+    /// <summary>Optional supervisor specifically assigned by the contributor to review this story.</summary>
+    public string? AssignedSupervisorId { get; set; }
+
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<StoryDetail> StoryDetails { get; set; } = new List<StoryDetail>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
