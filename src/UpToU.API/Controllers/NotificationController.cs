@@ -39,4 +39,36 @@ public class NotificationController : ControllerBase
         var result = await _mediator.Send(command, ct);
         return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
     }
+
+    [HttpGet("folder/{folder}")]
+    public async Task<ActionResult<PagedResult<NotificationDto>>> GetByFolder(
+        string folder,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetNotificationsByFolderQuery(folder, page, pageSize), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("archive")]
+    public async Task<ActionResult> Archive([FromBody] ArchiveNotificationsCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("{id:int}/toggle-important")]
+    public async Task<ActionResult<bool>> ToggleImportant(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ToggleImportantCommand(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpDelete("archived")]
+    public async Task<ActionResult<int>> CleanupArchived(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteArchivedNotificationsCommand(), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
 }

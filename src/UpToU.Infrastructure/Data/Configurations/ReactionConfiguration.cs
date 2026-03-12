@@ -8,6 +8,9 @@ public class ReactionConfiguration : IEntityTypeConfiguration<Reaction>
 {
     public void Configure(EntityTypeBuilder<Reaction> builder)
     {
+        // Match the global query filter on Story so EF never returns reactions for soft-deleted stories
+        builder.HasQueryFilter(r => !r.Story.IsDeleted);
+
         builder.Property(r => r.ReactionType)
                .HasMaxLength(20)
                .IsRequired();

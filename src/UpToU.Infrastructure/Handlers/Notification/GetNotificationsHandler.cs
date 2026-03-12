@@ -36,7 +36,8 @@ public class GetNotificationsHandler : IRequestHandler<GetNotificationsQuery, Re
         var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(n => new NotificationDto(n.Id, n.Type, n.StoryId, n.CommentId, n.ActorName, n.IsRead, n.CreatedAt))
+            .Select(n => new NotificationDto(n.Id, n.Type, n.StoryId, n.CommentId, n.ActorName,
+                n.Message, n.IsRead, n.IsArchived, n.IsImportant, n.CreatedAt))
             .ToListAsync(ct);
 
         return Result<PagedResult<NotificationDto>>.Success(

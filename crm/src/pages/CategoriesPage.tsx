@@ -99,7 +99,7 @@ function CategoryDialog({ open, category, allCategories, onClose, onSave, saving
         </Box>
         <Select
           value={form.parentId ?? ''}
-          onChange={(e) => set('parentId', e.target.value === '' ? null : Number(e.target.value))}
+          onChange={(e) => set('parentId', (e.target.value as unknown as string) === '' ? null : Number(e.target.value))}
           displayEmpty
           fullWidth
         >

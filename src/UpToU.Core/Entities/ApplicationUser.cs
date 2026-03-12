@@ -12,8 +12,23 @@ public class ApplicationUser : IdentityUser
 
     public string? MentionHandle { get; set; }
 
+    /// <summary>Optional display name shown on leaderboard and profile. Falls back to FirstName + LastName.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>UTC timestamp when the custom DisplayName expires and reverts to FirstName + LastName.</summary>
+    public DateTime? DisplayNameExpiresAt { get; set; }
+
+    // ── Credit / reward system ──────────────────────────────────────────────────
+    public int CreditBalance { get; set; }
+    public string? ActiveTitle { get; set; }
+    public string? ActiveAvatarFrameUrl { get; set; }
+    public string? AvatarUrl { get; set; }
+    public string? FavoriteQuote { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<CreditTransaction> CreditTransactions { get; set; } = new List<CreditTransaction>();
+    public ICollection<UserReward> UserRewards { get; set; } = new List<UserReward>();
 }

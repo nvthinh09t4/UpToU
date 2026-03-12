@@ -1,29 +1,29 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { LoginForm } from '../components/auth/LoginForm';
 import { SocialLoginButtons } from '../components/auth/SocialLoginButtons';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const registered = searchParams.get('registered') === 'true';
 
   return (
-    <AuthLayout title="Sign In to UpToU">
+    <AuthLayout title={t('auth.login.title')}>
       <div className="space-y-6">
         {registered && (
           <Alert>
-            <AlertDescription>
-              Account created! Please check your email to confirm your address before signing in.
-            </AlertDescription>
+            <AlertDescription>{t('auth.login.confirmed')}</AlertDescription>
           </Alert>
         )}
         <LoginForm />
         <SocialLoginButtons />
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
+          {t('auth.login.noAccount')}{' '}
           <Link to="/register" className="font-medium underline underline-offset-4 hover:text-primary">
-            Create one
+            {t('auth.login.createOne')}
           </Link>
         </p>
       </div>

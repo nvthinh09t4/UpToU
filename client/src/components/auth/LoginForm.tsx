@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -17,6 +18,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const { t } = useTranslation();
   const login = useLogin();
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
@@ -28,7 +30,7 @@ export function LoginForm() {
   };
 
   const errorMessage = login.error
-    ? ((login.error as AxiosError<ApiError>).response?.data?.title ?? 'Login failed. Please try again.')
+    ? ((login.error as AxiosError<ApiError>).response?.data?.title ?? t('auth.login.failed'))
     : null;
 
   return (
@@ -40,7 +42,7 @@ export function LoginForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('auth.login.email')}</Label>
         <Input
           id="email"
           type="email"
@@ -55,7 +57,7 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('auth.login.password')}</Label>
         <Input
           id="password"
           type="password"
@@ -70,7 +72,7 @@ export function LoginForm() {
       </div>
 
       <Button type="submit" className="w-full" disabled={isSubmitting || login.isPending}>
-        {login.isPending ? 'Signing in…' : 'Sign In'}
+        {login.isPending ? t('auth.login.submitting') : t('auth.login.submit')}
       </Button>
     </form>
   );

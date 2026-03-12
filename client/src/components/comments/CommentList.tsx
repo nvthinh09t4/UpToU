@@ -56,7 +56,7 @@ export function CommentList({ storyId }: CommentListProps) {
 
       {isAuthenticated ? (
         <div className="mb-8">
-          <CommentForm storyId={storyId} onSubmit={postComment} />
+          <CommentForm storyId={storyId} onSubmit={(body) => postComment(body).then(() => {})} />
         </div>
       ) : (
         <p className="mb-8 text-sm text-muted-foreground">

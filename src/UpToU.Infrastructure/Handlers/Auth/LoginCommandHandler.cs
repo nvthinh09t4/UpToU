@@ -55,7 +55,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         _db.RefreshTokens.Add(refreshToken);
         await _db.SaveChangesAsync(ct);
 
-        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles);
+        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle, user.ActiveAvatarFrameUrl, user.AvatarUrl,
+            DisplayName: user.DisplayName, DisplayNameExpiresAt: user.DisplayNameExpiresAt);
         var jwtExpiry = DateTime.UtcNow.AddMinutes(15);
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, jwtExpiry, userDto, refreshToken.Token));
     }

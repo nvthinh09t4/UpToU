@@ -6,6 +6,7 @@ import { voteApi } from '../../services/voteApi';
 import { useAuthStore } from '../../store/authStore';
 import { CommentForm } from './CommentForm';
 import { VoteButtons } from '../votes/VoteButtons';
+import { replaceEmoticons } from './emoticons';
 import type { Comment } from '../../types/comment';
 import type { VoteResult } from '../../types/vote';
 
@@ -31,7 +32,9 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 function highlightMentions(body: string): React.ReactNode {
-  const parts = body.split(/(@[\w.]+)/g);
+  // First convert emoticon shortcuts to emoji characters
+  const withEmoji = replaceEmoticons(body);
+  const parts = withEmoji.split(/(@[\w.]+)/g);
   return parts.map((part, i) =>
     part.startsWith('@')
       ? <span key={i} className="text-primary font-medium">{part}</span>

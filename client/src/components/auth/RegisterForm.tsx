@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -31,6 +32,7 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
+  const { t } = useTranslation();
   const register_ = useRegister();
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>({
@@ -44,7 +46,7 @@ export function RegisterForm() {
   const errorMessage = register_.error
     ? ((register_.error as AxiosError<ApiError>).response?.data?.detail
         ?? (register_.error as AxiosError<ApiError>).response?.data?.title
-        ?? 'Registration failed. Please try again.')
+        ?? t('auth.register.failed'))
     : null;
 
   return (
@@ -57,37 +59,37 @@ export function RegisterForm() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="firstName">First Name</Label>
+          <Label htmlFor="firstName">{t('auth.register.firstName')}</Label>
           <Input id="firstName" placeholder="Jane" {...register('firstName')} aria-invalid={!!errors.firstName} />
           {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="lastName">Last Name</Label>
+          <Label htmlFor="lastName">{t('auth.register.lastName')}</Label>
           <Input id="lastName" placeholder="Doe" {...register('lastName')} aria-invalid={!!errors.lastName} />
           {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('auth.register.email')}</Label>
         <Input id="email" type="email" autoComplete="email" placeholder="you@example.com" {...register('email')} aria-invalid={!!errors.email} />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('auth.register.password')}</Label>
         <Input id="password" type="password" autoComplete="new-password" placeholder="••••••••" {...register('password')} aria-invalid={!!errors.password} />
         {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Label htmlFor="confirmPassword">{t('auth.register.confirmPassword')}</Label>
         <Input id="confirmPassword" type="password" autoComplete="new-password" placeholder="••••••••" {...register('confirmPassword')} aria-invalid={!!errors.confirmPassword} />
         {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
       </div>
 
       <Button type="submit" className="w-full" disabled={isSubmitting || register_.isPending}>
-        {register_.isPending ? 'Creating account…' : 'Create Account'}
+        {register_.isPending ? t('auth.register.submitting') : t('auth.register.submit')}
       </Button>
     </form>
   );

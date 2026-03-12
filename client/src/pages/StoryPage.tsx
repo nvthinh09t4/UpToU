@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, Clock, User, Tag as TagIcon, BookOpen, Eye } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { ArrowLeft, Calendar, Clock, User, Tag as TagIcon, BookOpen, Eye, Coins, Play } from 'lucide-react';
 import { storyApi } from '../services/storyApi';
 import { voteApi } from '../services/voteApi';
+import { creditApi } from '../services/creditApi';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
 import { ReactionBar } from '../components/reactions/ReactionBar';
 import { CommentList } from '../components/comments/CommentList';
 import { AppHeader } from '../components/layout/AppHeader';
 import { VoteButtons } from '../components/votes/VoteButtons';
+import { BookmarkButton } from '../components/bookmarks/BookmarkButton';
+import { useAuthStore } from '../store/authStore';
 import type { VoteResult } from '../types/vote';
+import { InteractiveStoryViewer } from '../components/interactive/InteractiveStoryViewer';
 
 function readTime(wordCount: number): string {
   const minutes = Math.max(1, Math.round(wordCount / 200));
@@ -53,6 +57,31 @@ export function StoryPage() {
   });
 
   const [storyVote, setStoryVote] = useState<VoteResult | null>(null);
+  const [creditClaimed, setCreditClaimed] = useState(false);
+  const [showInteractive, setShowInteractive] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // Auto-launch the interactive viewer as soon as the story loads
+  useEffect(() => {
+    if (story?.storyType === 'Interactive' && isAuthenticated) {
+      setShowInteractive(true);
+    }
+  }, [story?.storyType, isAuthenticated]);
+  const user = useAuthStore((s) => s.user);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  const { mutate: claimRead, isPending: claimingRead } = useMutation({
+    mutationFn: () => creditApi.claimStoryRead(storyId),
+    onSuccess: () => {
+      setCreditClaimed(true);
+      // Update user's balance in the store
+      if (user && accessToken) {
+        setAuth(accessToken, { ...user, creditBalance: user.creditBalance + 5 });
+      }
+    },
+    onError: () => setCreditClaimed(true), // Already claimed — hide button
+  });
 
   const voteData: VoteResult = storyVote ?? {
     upvoteCount: story?.upvoteCount ?? 0,
@@ -198,7 +227,26 @@ export function StoryPage() {
           Back to {story.categoryTitle}
         </Link>
 
-        {detail?.content ? (
+        {story.storyType === 'Interactive' ? (
+          <div className="flex flex-col items-center py-16">
+            <div className="mb-4 rounded-full bg-primary/10 p-4">
+              <Play className="h-10 w-10 text-primary" />
+            </div>
+            <h3 className="mb-2 text-xl font-bold">Interactive Story</h3>
+            <p className="mb-6 max-w-sm text-center text-sm text-muted-foreground">
+              Your choices shape the outcome and earn you credits.
+            </p>
+            {isAuthenticated ? (
+              <Button onClick={() => setShowInteractive(true)}>
+                {showInteractive ? 'Resume Story' : 'Play Story'}
+              </Button>
+            ) : (
+              <Link to={`/login?redirect=/stories/${storyId}`}>
+                <Button>Login to Play</Button>
+              </Link>
+            )}
+          </div>
+        ) : detail?.content ? (
           <article
             className="prose prose-neutral max-w-none text-foreground leading-relaxed"
             dangerouslySetInnerHTML={{
@@ -212,7 +260,37 @@ export function StoryPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between py-4 border-b border-border">
+        {showInteractive && (
+          <InteractiveStoryViewer
+            storyId={story.id}
+            storyTitle={story.title}
+            onClose={() => setShowInteractive(false)}
+          />
+        )}
+
+        {/* Claim credits for reading */}
+        {isAuthenticated && story.storyType !== 'Interactive' && detail?.content && !creditClaimed && (
+          <div className="my-6 flex items-center justify-center rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-4">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => claimRead()}
+              disabled={claimingRead}
+              className="gap-1.5 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+            >
+              <Coins className="h-4 w-4" />
+              {claimingRead ? 'Claiming…' : 'Finished reading? Claim +5 credits'}
+            </Button>
+          </div>
+        )}
+        {creditClaimed && (
+          <div className="my-6 flex items-center justify-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+            <Coins className="h-4 w-4" />
+            Credits claimed for this story!
+          </div>
+        )}
+
+        <div className="flex items-center justify-between py-4 border-b border-border flex-wrap gap-3">
           <VoteButtons
             upvoteCount={voteData.upvoteCount}
             downvoteCount={voteData.downvoteCount}
@@ -221,7 +299,13 @@ export function StoryPage() {
             onVoteSuccess={setStoryVote}
             size="md"
           />
-          <ReactionBar storyId={storyId} />
+          <div className="flex items-center gap-4">
+            <BookmarkButton
+              storyId={storyId}
+              isBookmarked={story.isBookmarked}
+            />
+            <ReactionBar storyId={storyId} />
+          </div>
         </div>
         <CommentList storyId={storyId} />
       </main>

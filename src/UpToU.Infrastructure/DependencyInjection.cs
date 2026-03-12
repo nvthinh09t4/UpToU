@@ -18,6 +18,9 @@ public static class DependencyInjection
     {
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        services.Configure<DatabaseOptions>(o =>
+            o.ConnectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
+        services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(

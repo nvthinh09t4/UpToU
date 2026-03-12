@@ -15,4 +15,9 @@ public class StoryDetail
     public string SavePath { get; set; } = string.Empty;
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     public string? CreatedBy { get; set; }
+
+    /// <summary>When this revision becomes effective. Null = always active.</summary>
+    public DateTime? EffectiveDate { get; set; }
+
+    public ICollection<StoryNode> StoryNodes { get; set; } = new List<StoryNode>();
 }

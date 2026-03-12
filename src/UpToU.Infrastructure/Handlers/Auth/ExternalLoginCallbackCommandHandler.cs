@@ -90,7 +90,9 @@ public class ExternalLoginCallbackCommandHandler
         await _db.SaveChangesAsync(ct);
 
         var jwtExpiry = DateTime.UtcNow.AddMinutes(15);
-        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles);
+        var userDto = new UserDto(user.Id, user.Email!, user.FirstName, user.LastName, roles,
+            user.CreditBalance, user.ActiveTitle, user.ActiveAvatarFrameUrl, user.AvatarUrl,
+            DisplayName: user.DisplayName, DisplayNameExpiresAt: user.DisplayNameExpiresAt);
         return Result<AuthResponse>.Success(new AuthResponse(accessToken, jwtExpiry, userDto, refreshToken.Token));
     }
 }

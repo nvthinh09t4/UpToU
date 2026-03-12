@@ -33,7 +33,7 @@ public class CategoryController : ControllerBase
     // ── Admin endpoints ───────────────────────────────────────────────────────
 
     [HttpGet("admin/categories")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "ContributorOrAbove")]
     public async Task<ActionResult<List<CategoryDto>>> GetAllCategories(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetCategoriesQuery(ActiveOnly: false), ct);
@@ -41,7 +41,7 @@ public class CategoryController : ControllerBase
     }
 
     [HttpPost("admin/categories")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "StaffOrAdmin")]
     public async Task<ActionResult<CategoryDto>> CreateCategory(
         [FromBody] CreateCategoryCommand command,
         CancellationToken ct)
@@ -53,7 +53,7 @@ public class CategoryController : ControllerBase
     }
 
     [HttpPut("admin/categories/{id:int}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "StaffOrAdmin")]
     public async Task<ActionResult<CategoryDto>> UpdateCategory(
         int id,
         [FromBody] UpdateCategoryCommand command,
@@ -64,7 +64,7 @@ public class CategoryController : ControllerBase
     }
 
     [HttpDelete("admin/categories/{id:int}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "StaffOrAdmin")]
     public async Task<ActionResult> DeleteCategory(int id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteCategoryCommand(id), ct);

@@ -9,6 +9,11 @@ import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { BookmarksPage } from './pages/BookmarksPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { ProgressPage } from './pages/ProgressPage';
+import { RewardsPage } from './pages/RewardsPage';
 import { StoryPage } from './pages/StoryPage';
 
 const queryClient = new QueryClient({
@@ -34,10 +39,15 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/categories/:id" element={<CategoryPage />} />
           <Route path="/stories/:id" element={<StoryPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/rewards" element={<RewardsPage />} />
           </Route>
 
           {/* Default redirect */}

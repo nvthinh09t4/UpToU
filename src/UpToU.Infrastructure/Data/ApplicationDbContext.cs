@@ -19,6 +19,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<StoryVote> StoryVotes => Set<StoryVote>();
     public DbSet<CommentVote> CommentVotes => Set<CommentVote>();
+    public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
+    public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
+    public DbSet<RewardItem> RewardItems => Set<RewardItem>();
+    public DbSet<UserReward> UserRewards => Set<UserReward>();
+    public DbSet<UserBan> UserBans => Set<UserBan>();
+    public DbSet<StoryNode> StoryNodes => Set<StoryNode>();
+    public DbSet<StoryNodeAnswer> StoryNodeAnswers => Set<StoryNodeAnswer>();
+    public DbSet<UserStoryProgress> UserStoryProgresses => Set<UserStoryProgress>();
+    public DbSet<UserStoryAnswer> UserStoryAnswers => Set<UserStoryAnswer>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

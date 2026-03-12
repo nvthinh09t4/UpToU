@@ -53,6 +53,13 @@ public class GetStoriesByCategoryHandler : IRequestHandler<GetStoriesByCategoryQ
                 .ToDictionaryAsync(v => v.StoryId, v => v.VoteType, ct)
             : [];
 
+        var bookmarkedIds = userId is not null
+            ? (await _db.Bookmarks
+                .Where(b => storyIds.Contains(b.StoryId) && b.UserId == userId)
+                .Select(b => b.StoryId)
+                .ToListAsync(ct)).ToHashSet()
+            : [];
+
         int UpCount(int id) => voteLookup.TryGetValue(id, out var d) && d.TryGetValue("Up", out var c) ? c : 0;
         int DownCount(int id) => voteLookup.TryGetValue(id, out var d) && d.TryGetValue("Down", out var c) ? c : 0;
         string? UserVote(int id) => userVoteLookup.TryGetValue(id, out var v) ? v : null;
@@ -71,7 +78,8 @@ public class GetStoriesByCategoryHandler : IRequestHandler<GetStoriesByCategoryQ
                 publishedRevisionOnly: true,
                 upvoteCount: UpCount(s.Id),
                 downvoteCount: DownCount(s.Id),
-                currentUserVote: UserVote(s.Id))).ToList()
+                currentUserVote: UserVote(s.Id),
+                isBookmarked: bookmarkedIds.Contains(s.Id))).ToList()
         );
     }
 }

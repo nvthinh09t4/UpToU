@@ -10,6 +10,9 @@ public class CommentVoteConfiguration : IEntityTypeConfiguration<CommentVote>
     {
         builder.HasKey(v => v.Id);
 
+        // Match the global query filter on Comment so EF never returns votes for soft-deleted comments
+        builder.HasQueryFilter(v => !v.Comment.IsDeleted);
+
         builder.Property(v => v.VoteType).HasMaxLength(10).IsRequired();
 
         builder.HasOne(v => v.Comment)

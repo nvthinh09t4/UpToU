@@ -44,4 +44,6 @@ export interface Story {
   upvoteCount: number;
   downvoteCount: number;
   currentUserVote: VoteType | null;
+  isBookmarked: boolean;
+  storyType: string;
 }

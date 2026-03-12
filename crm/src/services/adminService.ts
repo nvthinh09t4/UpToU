@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient'
-import type { AdminUser, Category, DashboardStats, PagedResult, Story, StoryDetail, Tag } from '@/types'
+import type { AdminRewardItem, AdminUser, Category, DashboardStats, PagedResult, ReportData, Story, StoryDetail, StoryNode, StoryNodeAnswer, StoryNodeGraph, Tag, UserBan } from '@/types'
 
 export const adminService = {
   getDashboard: () =>
@@ -7,6 +7,10 @@ export const adminService = {
 
   getUsers: (params: { page?: number; pageSize?: number; search?: string; role?: string }) =>
     apiClient.get<PagedResult<AdminUser>>('/admin/users', { params }),
+
+  /** Fetch all users with Supervisor or Senior Supervisor roles for story assignment */
+  getSupervisors: () =>
+    apiClient.get<PagedResult<AdminUser>>('/admin/users', { params: { pageSize: 100, role: 'Supervisor' } }),
 
   getUser: (id: string) =>
     apiClient.get<AdminUser>(`/admin/users/${id}`),
@@ -60,10 +64,24 @@ export const adminService = {
     title: string; slug: string | null; description: string | null; excerpt: string | null
     coverImageUrl: string | null; authorName: string | null; isFeatured: boolean
     categoryId: number; publishDate: string | null; isPublish: boolean; tagIds: number[]
+    assignedSupervisorId?: string | null
   }) => apiClient.put<Story>(`/admin/stories/${id}`, data),
 
   deleteStory: (id: number) =>
     apiClient.delete(`/admin/stories/${id}`),
+
+  // ── Story workflow ────────────────────────────────────────────────────────
+  submitStory: (id: number) =>
+    apiClient.post<Story>(`/admin/stories/${id}/submit`, {}),
+
+  approveStory: (id: number, publishDate: string | null) =>
+    apiClient.post<Story>(`/admin/stories/${id}/approve`, { publishDate }),
+
+  rejectStory: (id: number, reason: string) =>
+    apiClient.post<Story>(`/admin/stories/${id}/reject`, { reason }),
+
+  getSubmittedStories: () =>
+    apiClient.get<Story[]>('/admin/stories/submitted'),
 
   getStoryDetails: (storyId: number) =>
     apiClient.get<StoryDetail[]>(`/admin/stories/${storyId}/details`),
@@ -82,4 +100,52 @@ export const adminService = {
 
   deleteTag: (id: number) =>
     apiClient.delete(`/admin/tags/${id}`),
+
+  // Reports
+  getReports: () =>
+    apiClient.get<ReportData>('/admin/reports'),
+
+  // Bans
+  getBans: (userId?: string) =>
+    apiClient.get<UserBan[]>('/admin/bans', { params: userId ? { userId } : undefined }),
+
+  banUser: (data: { userId: string; banType: string; categoryId?: number; reason: string; durationDays?: number }) =>
+    apiClient.post<UserBan>('/admin/bans', data),
+
+  revokeBan: (banId: number) =>
+    apiClient.post(`/admin/bans/${banId}/revoke`),
+
+  // Reward Shop
+  getAdminRewards: (category?: string) =>
+    apiClient.get<AdminRewardItem[]>('/admin/rewards', { params: category ? { category } : undefined }),
+
+  createReward: (data: Omit<AdminRewardItem, 'id' | 'isActive' | 'purchaseCount' | 'createdAt'>) =>
+    apiClient.post<AdminRewardItem>('/admin/rewards', data),
+
+  updateReward: (id: number, data: Omit<AdminRewardItem, 'id' | 'purchaseCount' | 'createdAt'>) =>
+    apiClient.put<AdminRewardItem>(`/admin/rewards/${id}`, data),
+
+  deleteReward: (id: number) =>
+    apiClient.delete(`/admin/rewards/${id}`),
+
+  // Interactive Story Nodes
+  getStoryNodeGraph: (detailId: number) =>
+    apiClient.get<StoryNodeGraph>(`/admin/story-nodes/${detailId}`),
+
+  upsertStoryNode: (data: {
+    id?: number; storyDetailId: number; question: string; questionSubtitle?: string;
+    isStart: boolean; backgroundImageUrl?: string; backgroundColor?: string;
+    videoUrl?: string; animationType?: string; sortOrder: number;
+  }) => apiClient.post<StoryNode>('/admin/story-nodes', data),
+
+  deleteStoryNode: (id: number) =>
+    apiClient.delete(`/admin/story-nodes/${id}`),
+
+  upsertStoryNodeAnswer: (data: {
+    id?: number; storyNodeId: number; text: string; pointsAwarded: number;
+    nextNodeId?: number | null; color?: string; sortOrder: number;
+  }) => apiClient.post<StoryNodeAnswer>('/admin/story-node-answers', data),
+
+  deleteStoryNodeAnswer: (id: number) =>
+    apiClient.delete(`/admin/story-node-answers/${id}`),
 }
