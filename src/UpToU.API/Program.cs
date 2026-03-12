@@ -90,19 +90,17 @@ builder.Services
     });
 
 // ── Authorization ─────────────────────────────────────────────────────────────
-builder.Services.AddAuthorization(options =>
-{
+builder.Services.AddAuthorizationBuilder()
     // Admin-only operations: role/ban/reward management (no story approval)
-    options.AddPolicy("AdminOnly",               p => p.RequireRole("Admin"));
+    .AddPolicy("AdminOnly",               p => p.RequireRole("Admin"))
     // Story approval/rejection: Supervisor + Senior Supervisor (NOT Admin)
-    options.AddPolicy("StaffOnly",               p => p.RequireRole("Supervisor", "Senior Supervisor"));
+    .AddPolicy("StaffOnly",               p => p.RequireRole("Supervisor", "Senior Supervisor"))
     // Role assignment: Admin + Senior Supervisor
-    options.AddPolicy("SeniorSupervisorOrAdmin", p => p.RequireRole("Admin", "Senior Supervisor"));
+    .AddPolicy("SeniorSupervisorOrAdmin", p => p.RequireRole("Admin", "Senior Supervisor"))
     // Story CRUD + dashboard: all CRM staff
-    options.AddPolicy("StaffOrAdmin",            p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor"));
+    .AddPolicy("StaffOrAdmin",            p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor"))
     // Story submission + management: all CRM roles
-    options.AddPolicy("ContributorOrAbove",      p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor", "Contributor"));
-});
+    .AddPolicy("ContributorOrAbove",      p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor", "Contributor"));
 
 // ── Options (API-specific) ────────────────────────────────────────────────────
 builder.Services.Configure<ClientOptions>(
@@ -210,6 +208,15 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+// ── Auto-migrate on startup ───────────────────────────────────────────────────
+// Applies any pending EF Core migrations automatically when the container starts.
+// Safe to run on every deploy — EF Core is idempotent (skips already-applied migrations).
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();

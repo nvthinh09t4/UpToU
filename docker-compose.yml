@@ -1,0 +1,107 @@
+services:
+
+  # ── SQL Server ───────────────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${DB_SA_PASSWORD}"
+    volumes:
+      - sqldata:/var/opt/mssql
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /opt/mssql-tools18/bin/sqlcmd
+        - -S
+        - localhost
+        - -U
+        - sa
+        - -P
+        - "${DB_SA_PASSWORD}"
+        - -C
+        - -Q
+        - SELECT 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ── ASP.NET Core API ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: src/UpToU.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: >-
+        Server=sqlserver,1433;Database=UpToU;
+        User Id=sa;Password=${DB_SA_PASSWORD};
+        TrustServerCertificate=True;MultipleActiveResultSets=True;
+      Jwt__SecretKey: "${JWT_SECRET}"
+      Jwt__Issuer: "UpToU.API"
+      Jwt__Audience: "UpToU.Client"
+      Jwt__AccessTokenExpiryMinutes: "15"
+      Jwt__RefreshTokenExpiryDays: "7"
+      Client__BaseUrl: "https://app.${DOMAIN}"
+      Client__CrmBaseUrl: "https://crm.${DOMAIN}"
+      Smtp__Host: "${SMTP_HOST}"
+      Smtp__Port: "${SMTP_PORT}"
+      Smtp__Username: "${SMTP_USER}"
+      Smtp__Password: "${SMTP_PASS}"
+      Smtp__FromAddress: "${SMTP_FROM}"
+      Smtp__FromName: "UpToU"
+      Authentication__Google__ClientId: "${GOOGLE_CLIENT_ID}"
+      Authentication__Google__ClientSecret: "${GOOGLE_CLIENT_SECRET}"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  # ── Reader client (React) ────────────────────────────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    networks:
+      - frontend
+    restart: unless-stopped
+
+  # ── CRM (React) ───────────────────────────────────────────────────────────────
+  crm:
+    build:
+      context: ./crm
+      dockerfile: Dockerfile
+    networks:
+      - frontend
+    restart: unless-stopped
+
+  # ── Nginx reverse proxy ───────────────────────────────────────────────────────
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+      - client
+      - crm
+    networks:
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  sqldata:
+
+networks:
+  backend:
+  frontend:
