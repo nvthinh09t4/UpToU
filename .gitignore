@@ -20,6 +20,13 @@ dist/
 .cache/
 *.local
 
+# ── Build bundles & deployment artifacts ──────────────────────────────────────
+publish/
+*.zip
+*.tar.gz
+*.tar
+accounts
+
 # ── Environment / secrets ─────────────────────────────────────────────────────
 .env
 .env.*
