@@ -55,11 +55,11 @@ public class SubmitStoryAnswerHandler : IRequestHandler<SubmitStoryAnswerCommand
         // Record the answer
         var userAnswer = new UserStoryAnswer
         {
-            ProgressId   = progress.Id,
-            NodeId       = progress.CurrentNodeId.Value,
-            AnswerId     = answer.Id,
+            ProgressId    = progress.Id,
+            NodeId        = progress.CurrentNodeId.Value,
+            AnswerId      = answer.Id,
             PointsAwarded = answer.PointsAwarded,
-            AnsweredAt   = DateTime.UtcNow,
+            AnsweredAt    = DateTime.UtcNow,
         };
         _db.UserStoryAnswers.Add(userAnswer);
 
@@ -68,33 +68,53 @@ public class SubmitStoryAnswerHandler : IRequestHandler<SubmitStoryAnswerCommand
 
         if (answer.NextNodeId is null)
         {
-            // Story complete
-            progress.IsCompleted    = true;
-            progress.CurrentNodeId  = null;
-            progress.CompletedAt    = DateTime.UtcNow;
+            // ── Story complete ────────────────────────────────────────────────
+            progress.IsCompleted   = true;
+            progress.CurrentNodeId = null;
+            progress.CompletedAt   = DateTime.UtcNow;
 
-            // Award credits — load story title for description
-            var storyTitle = await _db.Stories.AsNoTracking()
+            // Load story metadata once for both the credit and contributed-point logic
+            var story = await _db.Stories.AsNoTracking()
                 .Where(s => s.Id == progress.StoryId)
-                .Select(s => s.Title)
-                .FirstOrDefaultAsync(ct) ?? "Unknown Story";
-
-            var categoryId = await _db.Stories.AsNoTracking()
-                .Where(s => s.Id == progress.StoryId)
-                .Select(s => (int?)s.CategoryId)
+                .Select(s => new { s.Title, s.CategoryId, s.AuthorId })
                 .FirstOrDefaultAsync(ct);
 
-            var credit = new CreditTransaction
+            // Award reader credits for completing the interactive story
+            _db.CreditTransactions.Add(new CreditTransaction
             {
                 UserId      = userId,
                 Amount      = progress.TotalPointsEarned,
                 Type        = "StoryComplete",
                 ReferenceId = progress.StoryId,
-                CategoryId  = categoryId,
-                Description = $"Completed: {storyTitle}",
+                CategoryId  = story?.CategoryId,
+                Description = $"Completed: {story?.Title ?? "Unknown Story"}",
                 CreatedAt   = DateTime.UtcNow,
-            };
-            _db.CreditTransactions.Add(credit);
+            });
+
+            // Award a contributed point to the story's author (skip self-reads)
+            if (story?.AuthorId is { } authorId && authorId != userId)
+            {
+                var alreadyAwarded = await _db.ContributedPointTransactions
+                    .AnyAsync(t => t.StoryId == progress.StoryId && t.ReaderId == userId, ct);
+
+                if (!alreadyAwarded)
+                {
+                    _db.ContributedPointTransactions.Add(new ContributedPointTransaction
+                    {
+                        AuthorId  = authorId,
+                        ReaderId  = userId,
+                        StoryId   = progress.StoryId,
+                        Points    = 1,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+
+                    // Increment the cached counter on the author's profile row
+                    await _db.Users
+                        .Where(u => u.Id == authorId)
+                        .ExecuteUpdateAsync(
+                            s => s.SetProperty(u => u.ContributedPoints, u => u.ContributedPoints + 1), ct);
+                }
+            }
         }
         else
         {

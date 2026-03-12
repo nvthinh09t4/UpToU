@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<StoryNodeAnswer> StoryNodeAnswers => Set<StoryNodeAnswer>();
     public DbSet<UserStoryProgress> UserStoryProgresses => Set<UserStoryProgress>();
     public DbSet<UserStoryAnswer> UserStoryAnswers => Set<UserStoryAnswer>();
+    public DbSet<ContributedPointTransaction> ContributedPointTransactions => Set<ContributedPointTransaction>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

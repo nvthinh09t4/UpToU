@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Crown, Medal, Flame, Coins, Users, TrendingUp } from 'lucide-react';
+import { Trophy, Crown, Medal, Flame, Coins, Users, TrendingUp, PenLine, Star } from 'lucide-react';
 import { leaderboardApi } from '../services/leaderboardApi';
 import { categoryApi } from '../services/categoryApi';
 import { AppHeader } from '../components/layout/AppHeader';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
 import { RANK_TIERS } from '../utils/rankHelper';
-import type { LeaderboardEntry, TimePeriod } from '../types/leaderboard';
+import type { ContributorLeaderboardEntry, LeaderboardEntry, TimePeriod } from '../types/leaderboard';
 
 const TIME_PERIODS: { value: TimePeriod; label: string }[] = [
   { value: 'Weekly', label: 'This Week' },
@@ -47,24 +47,16 @@ function DotaRankBadge({ rankName, rankStars }: { rankName: string; rankStars: n
   );
 }
 
-function UserAvatar({ entry }: { entry: LeaderboardEntry }) {
+function UserAvatar({ entry }: { entry: Pick<LeaderboardEntry, 'displayName' | 'avatarUrl' | 'activeAvatarFrameUrl'> }) {
   const initial = entry.displayName.charAt(0).toUpperCase();
 
   return (
     <div className="relative flex-shrink-0">
       {entry.activeAvatarFrameUrl ? (
         <div className="relative h-10 w-10">
-          <img
-            src={entry.activeAvatarFrameUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full"
-          />
+          <img src={entry.activeAvatarFrameUrl} alt="" className="absolute inset-0 h-full w-full" />
           {entry.avatarUrl ? (
-            <img
-              src={entry.avatarUrl}
-              alt={entry.displayName}
-              className="absolute inset-1 h-8 w-8 rounded-full object-cover"
-            />
+            <img src={entry.avatarUrl} alt={entry.displayName} className="absolute inset-1 h-8 w-8 rounded-full object-cover" />
           ) : (
             <div className="absolute inset-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
               {initial}
@@ -72,11 +64,7 @@ function UserAvatar({ entry }: { entry: LeaderboardEntry }) {
           )}
         </div>
       ) : entry.avatarUrl ? (
-        <img
-          src={entry.avatarUrl}
-          alt={entry.displayName}
-          className="h-10 w-10 rounded-full object-cover"
-        />
+        <img src={entry.avatarUrl} alt={entry.displayName} className="h-10 w-10 rounded-full object-cover" />
       ) : (
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
           {initial}
@@ -92,17 +80,13 @@ function LeaderboardRow({ entry, showActivity }: { entry: LeaderboardEntry; show
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-        isTop3 ? 'bg-amber-500/5' : ''
-      }`}
+      className={`flex items-center gap-3 px-4 py-3 transition-colors ${isTop3 ? 'bg-amber-500/5' : ''}`}
       style={{ borderLeft: `3px solid ${rankColor}` }}
     >
       <div className="flex w-8 items-center justify-center">
         <RankBadge rank={entry.rank} />
       </div>
-
       <UserAvatar entry={entry} />
-
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold truncate">{entry.displayName}</span>
@@ -116,13 +100,10 @@ function LeaderboardRow({ entry, showActivity }: { entry: LeaderboardEntry; show
           <span className="text-xs text-muted-foreground">@{entry.mentionHandle}</span>
         )}
       </div>
-
       <div className="flex items-center gap-4 text-right">
-        {/* Dota rank badge */}
         <div className="hidden sm:block">
           <DotaRankBadge rankName={entry.rankName} rankStars={entry.rankStars} />
         </div>
-
         {showActivity && (
           <div className="hidden sm:block">
             <p className="text-xs text-muted-foreground">Activities</p>
@@ -134,6 +115,63 @@ function LeaderboardRow({ entry, showActivity }: { entry: LeaderboardEntry; show
           <p className="flex items-center gap-1 text-sm font-bold text-amber-600 dark:text-amber-400">
             <Coins className="h-3.5 w-3.5" />
             {entry.totalCredits.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContributorRow({ entry }: { entry: ContributorLeaderboardEntry }) {
+  const isTop3 = entry.rank <= 3;
+
+  return (
+    <div
+      className={`flex items-center gap-3 px-4 py-3 transition-colors ${isTop3 ? 'bg-emerald-500/5' : ''}`}
+      style={{ borderLeft: `3px solid ${entry.isChampion ? '#10b981' : '#6b7280'}` }}
+    >
+      <div className="flex w-8 items-center justify-center">
+        <RankBadge rank={entry.rank} />
+      </div>
+
+      <UserAvatar entry={entry} />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold truncate">{entry.displayName}</span>
+
+          {/* Exclusive champion badge — only shown if user currently holds the title */}
+          {entry.isChampion && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              <Star className="h-2.5 w-2.5 fill-current" />
+              Contributor Champion
+            </span>
+          )}
+
+          {entry.activeTitle && entry.activeTitle !== '✍️ Contributor Champion' && (
+            <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              {entry.activeTitle}
+            </span>
+          )}
+        </div>
+        {entry.mentionHandle && (
+          <span className="text-xs text-muted-foreground">@{entry.mentionHandle}</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4 text-right">
+        <div className="hidden sm:block">
+          <p className="text-xs text-muted-foreground">Readers</p>
+          <p className="flex items-center gap-1 text-sm font-semibold text-sky-600 dark:text-sky-400">
+            <Users className="h-3.5 w-3.5" />
+            {entry.uniqueReaders.toLocaleString()}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Pts</p>
+          <p className="flex items-center gap-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+            <PenLine className="h-3.5 w-3.5" />
+            {entry.contributedPoints.toLocaleString()}
           </p>
         </div>
       </div>
@@ -168,7 +206,26 @@ function LeaderboardTable({
   );
 }
 
-type BoardTab = 'overall' | 'category' | 'active';
+function ContributorTable({ entries, emptyMessage }: { entries: ContributorLeaderboardEntry[]; emptyMessage: string }) {
+  if (entries.length === 0) {
+    return (
+      <div className="py-16 text-center text-muted-foreground">
+        <PenLine className="mx-auto mb-3 h-10 w-10 opacity-30" />
+        <p>{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+      {entries.map((entry) => (
+        <ContributorRow key={entry.userId} entry={entry} />
+      ))}
+    </div>
+  );
+}
+
+type BoardTab = 'overall' | 'category' | 'active' | 'contributors';
 
 export function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<BoardTab>('overall');
@@ -180,7 +237,6 @@ export function LeaderboardPage() {
     queryFn: () => categoryApi.getAll(),
   });
 
-  // Flatten category tree for the selector
   const flatCategories = categories.flatMap((c) => [c, ...c.children]);
 
   const { data: overallBoard, isLoading: loadingOverall } = useQuery({
@@ -201,21 +257,31 @@ export function LeaderboardPage() {
     enabled: activeTab === 'active',
   });
 
+  const { data: contributorBoard, isLoading: loadingContributors } = useQuery({
+    queryKey: ['leaderboard', 'contributors'],
+    queryFn: () => leaderboardApi.getContributors(),
+    enabled: activeTab === 'contributors',
+  });
+
   // Auto-select first category
   if (activeTab === 'category' && selectedCategoryId === null && flatCategories.length > 0) {
     setSelectedCategoryId(flatCategories[0].id);
   }
 
   const isLoading =
-    (activeTab === 'overall' && loadingOverall) ||
-    (activeTab === 'category' && loadingCategory) ||
-    (activeTab === 'active' && loadingActive);
+    (activeTab === 'overall'      && loadingOverall) ||
+    (activeTab === 'category'     && loadingCategory) ||
+    (activeTab === 'active'       && loadingActive) ||
+    (activeTab === 'contributors' && loadingContributors);
 
   const tabs: { key: BoardTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'overall', label: 'Top Points', icon: <Trophy className="h-4 w-4" /> },
-    { key: 'category', label: 'By Category', icon: <TrendingUp className="h-4 w-4" /> },
-    { key: 'active', label: 'Most Active', icon: <Flame className="h-4 w-4" /> },
+    { key: 'overall',      label: 'Top Points',  icon: <Trophy  className="h-4 w-4" /> },
+    { key: 'category',     label: 'By Category', icon: <TrendingUp className="h-4 w-4" /> },
+    { key: 'active',       label: 'Most Active', icon: <Flame   className="h-4 w-4" /> },
+    { key: 'contributors', label: 'Authors',     icon: <PenLine className="h-4 w-4" /> },
   ];
+
+  const showTimePeriod = activeTab !== 'contributors';
 
   return (
     <>
@@ -235,19 +301,21 @@ export function LeaderboardPage() {
           </p>
         </div>
 
-        {/* Time period filter */}
-        <div className="mb-6 flex items-center justify-center gap-1">
-          {TIME_PERIODS.map((tp) => (
-            <Button
-              key={tp.value}
-              size="sm"
-              variant={timePeriod === tp.value ? 'default' : 'ghost'}
-              onClick={() => setTimePeriod(tp.value)}
-            >
-              {tp.label}
-            </Button>
-          ))}
-        </div>
+        {/* Time period filter — hidden on contributors tab */}
+        {showTimePeriod && (
+          <div className="mb-6 flex items-center justify-center gap-1">
+            {TIME_PERIODS.map((tp) => (
+              <Button
+                key={tp.value}
+                size="sm"
+                variant={timePeriod === tp.value ? 'default' : 'ghost'}
+                onClick={() => setTimePeriod(tp.value)}
+              >
+                {tp.label}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {/* Board tabs */}
         <div className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
@@ -265,7 +333,7 @@ export function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Category selector for category tab */}
+        {/* Category selector */}
         {activeTab === 'category' && (
           <div className="mb-4 flex flex-wrap gap-1.5">
             {flatCategories.map((cat) => (
@@ -279,6 +347,25 @@ export function LeaderboardPage() {
                 {cat.title}
               </Button>
             ))}
+          </div>
+        )}
+
+        {/* Contributors tab banner */}
+        {activeTab === 'contributors' && (
+          <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+            <div className="flex items-start gap-3">
+              <Star className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500 fill-current" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  ✍️ Contributor Champion
+                </p>
+                <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+                  Authors earn 1 contributed point every time a unique reader finishes one of their stories.
+                  The #1 author is crowned <strong>Contributor Champion</strong> each day — an exclusive title
+                  that cannot be purchased anywhere.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -300,9 +387,7 @@ export function LeaderboardPage() {
             {activeTab === 'category' && (
               <>
                 {categoryBoard?.categoryTitle && (
-                  <h2 className="mb-3 text-lg font-semibold">
-                    {categoryBoard.categoryTitle}
-                  </h2>
+                  <h2 className="mb-3 text-lg font-semibold">{categoryBoard.categoryTitle}</h2>
                 )}
                 <LeaderboardTable
                   entries={categoryBoard?.entries ?? []}
@@ -322,38 +407,47 @@ export function LeaderboardPage() {
                 showActivity
               />
             )}
+
+            {activeTab === 'contributors' && (
+              <ContributorTable
+                entries={contributorBoard?.entries ?? []}
+                emptyMessage="No contributed points yet. Publish a story and watch readers finish it!"
+              />
+            )}
           </>
         )}
 
-        {/* Medal legend */}
+        {/* Legend */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Crown className="h-4 w-4 text-yellow-500" /> 1st Place
-          </span>
-          <span className="flex items-center gap-1">
-            <Medal className="h-4 w-4 text-gray-400" /> 2nd Place
-          </span>
-          <span className="flex items-center gap-1">
-            <Medal className="h-4 w-4 text-amber-700" /> 3rd Place
-          </span>
-          <span className="flex items-center gap-1">
-            Titles shown as
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">badge</span>
-          </span>
+          <span className="flex items-center gap-1"><Crown className="h-4 w-4 text-yellow-500" /> 1st Place</span>
+          <span className="flex items-center gap-1"><Medal className="h-4 w-4 text-gray-400" /> 2nd Place</span>
+          <span className="flex items-center gap-1"><Medal className="h-4 w-4 text-amber-700" /> 3rd Place</span>
+          {activeTab === 'contributors' ? (
+            <span className="flex items-center gap-1">
+              <Star className="h-4 w-4 text-emerald-500 fill-current" /> Champion = exclusive daily title
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              Titles shown as
+              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">badge</span>
+            </span>
+          )}
         </div>
 
-        {/* Rank tier legend */}
-        <div className="mt-8 rounded-lg border border-border p-4">
-          <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rank Tiers</h3>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-            {RANK_TIERS.map((t) => (
-              <div key={t.name} className="flex flex-col items-center gap-1">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
-                <span className="text-[10px] font-medium" style={{ color: t.color }}>{t.name}</span>
-              </div>
-            ))}
+        {/* Rank tier legend — only on credit boards */}
+        {activeTab !== 'contributors' && (
+          <div className="mt-8 rounded-lg border border-border p-4">
+            <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rank Tiers</h3>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+              {RANK_TIERS.map((t) => (
+                <div key={t.name} className="flex flex-col items-center gap-1">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
+                  <span className="text-[10px] font-medium" style={{ color: t.color }}>{t.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </>
   );

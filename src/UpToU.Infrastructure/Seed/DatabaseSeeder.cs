@@ -16,6 +16,31 @@ public static class DatabaseSeeder
         var categories = await SeedCategoriesAsync(db);
         await SeedTagsAndStoriesAsync(db, categories);
         await SeedInteractiveStoriesAsync(db, categories);
+        await SeedExclusiveRewardsAsync(db);
+    }
+
+    private static async Task SeedExclusiveRewardsAsync(ApplicationDbContext db)
+    {
+        const string championValue = "✍️ Contributor Champion";
+
+        // Idempotent — only seed once
+        if (await db.RewardItems.AnyAsync(r => r.IsExclusive && r.Value == championValue))
+            return;
+
+        db.RewardItems.Add(new RewardItem
+        {
+            Name        = "Contributor Champion",
+            Description = "Awarded daily to the author whose stories have been finished by the most unique readers. "
+                        + "This title cannot be purchased — it belongs to the community's most impactful storyteller.",
+            Category    = "Title",
+            CreditCost  = 0,
+            Value       = championValue,
+            IsActive    = true,
+            IsExclusive = true,
+            CreatedAt   = DateTime.UtcNow,
+        });
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAndAdminAsync(

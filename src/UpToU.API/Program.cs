@@ -200,6 +200,11 @@ recurringJobs.AddOrUpdate<PublishApprovedStoriesJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Minutely());  // check every minute for scheduled publishes
 
+recurringJobs.AddOrUpdate<AssignContributorTitleJob>(
+    "assign-contributor-title",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Daily(4));  // 04:00 UTC daily — crown the current Contributor Champion
+
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseSerilogRequestLogging();
@@ -208,15 +213,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
-
-// ── Auto-migrate on startup ───────────────────────────────────────────────────
-// Applies any pending EF Core migrations automatically when the container starts.
-// Safe to run on every deploy — EF Core is idempotent (skips already-applied migrations).
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();

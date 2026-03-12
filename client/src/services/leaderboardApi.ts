@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Leaderboard, LeaderboardSummary } from '../types/leaderboard';
+import type { ContributorLeaderboard, Leaderboard, LeaderboardSummary } from '../types/leaderboard';
 
 export const leaderboardApi = {
   getOverall: async (timePeriod = 'AllTime', top = 50): Promise<Leaderboard> => {
@@ -26,6 +26,13 @@ export const leaderboardApi = {
   getSummary: async (timePeriod = 'AllTime', top = 10): Promise<LeaderboardSummary> => {
     const { data } = await apiClient.get<LeaderboardSummary>('/leaderboard/summary', {
       params: { timePeriod, top },
+    });
+    return data;
+  },
+
+  getContributors: async (top = 50): Promise<ContributorLeaderboard> => {
+    const { data } = await apiClient.get<ContributorLeaderboard>('/leaderboard/contributors', {
+      params: { top },
     });
     return data;
   },
