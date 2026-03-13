@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UpToU.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using UpToU.Infrastructure.Data;
 namespace UpToU.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312161630_AddCategoryScoreTypesAndStoryTranslations")]
+    partial class AddCategoryScoreTypesAndStoryTranslations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -997,14 +1000,6 @@ namespace UpToU.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("QuestionSubtitleVi")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("QuestionVi")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -1042,10 +1037,6 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<int>("PointsAwarded")
                         .HasColumnType("int");
 
-                    b.Property<string>("ScoreDeltas")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -1054,10 +1045,6 @@ namespace UpToU.Infrastructure.Migrations
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("TextVi")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -1292,10 +1279,6 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<int>("ProgressId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ScoreDeltas")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ProgressId");
@@ -1319,10 +1302,6 @@ namespace UpToU.Infrastructure.Migrations
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("bit");
-
-                    b.Property<string>("ScoreTotals")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("datetime2");

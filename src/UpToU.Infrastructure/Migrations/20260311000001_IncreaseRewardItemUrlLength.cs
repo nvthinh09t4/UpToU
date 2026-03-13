@@ -1,10 +1,15 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using UpToU.Infrastructure.Data;
 
 #nullable disable
 
 namespace UpToU.Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260311000001_IncreaseRewardItemUrlLength")]
     public partial class IncreaseRewardItemUrlLength : Migration
     {
         /// <inheritdoc />

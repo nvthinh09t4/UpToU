@@ -20,6 +20,13 @@ public class UserStoryProgress
 
     public bool IsCompleted { get; set; }
     public int TotalPointsEarned { get; set; }
+
+    /// <summary>
+    /// Running per-score-type totals accumulated through the story.
+    /// Keys match <see cref="CategoryScoreType.Name"/> values (e.g. "capital", "experience", "mental", "health").
+    /// </summary>
+    public Dictionary<string, int> ScoreTotals { get; set; } = new();
+
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAt { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

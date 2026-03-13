@@ -14,8 +14,10 @@ public static class DatabaseSeeder
     {
         await SeedRolesAndAdminAsync(userManager, roleManager);
         var categories = await SeedCategoriesAsync(db);
+        await SeedCategoryScoreTypesAsync(db, categories);
         await SeedTagsAndStoriesAsync(db, categories);
         await SeedInteractiveStoriesAsync(db, categories);
+        await InvestmentCrisisStorySeeder.SeedAsync(db, categories);
         await SeedExclusiveRewardsAsync(db);
     }
 
@@ -352,6 +354,137 @@ public static class DatabaseSeeder
         await db.SaveChangesAsync();
 
         return await db.Categories.IgnoreQueryFilters().ToListAsync();
+    }
+
+    private static async Task SeedCategoryScoreTypesAsync(ApplicationDbContext db, List<Category> categories)
+    {
+        // Map score types by category title — each entry is (name, label, weight, order)
+        // This method is upsert-safe: runs on every startup and adds/updates/removes score types as needed.
+        var scoreTypeMap = new Dictionary<string, List<(string Name, string Label, decimal Weight, int Order)>>
+        {
+            ["Investment"] =
+            [
+                ("capital",    "Capital",    0.35m, 1),
+                ("experience", "Experience", 0.30m, 2),
+                ("mental",     "Mental",     0.20m, 3),
+                ("health",     "Health",     0.15m, 4),
+            ],
+            ["Budgeting"] =
+            [
+                ("discipline", "Discipline", 0.40m, 1),
+                ("knowledge",  "Knowledge",  0.35m, 2),
+                ("habits",     "Habits",     0.25m, 3),
+            ],
+            ["Tax & Accounting"] =
+            [
+                ("knowledge",   "Knowledge",   0.50m, 1),
+                ("compliance",  "Compliance",  0.30m, 2),
+                ("efficiency",  "Efficiency",  0.20m, 3),
+            ],
+            ["Health & Wellness"] =
+            [
+                ("physical",  "Physical",  0.35m, 1),
+                ("mental",    "Mental",    0.35m, 2),
+                ("nutrition", "Nutrition", 0.30m, 3),
+            ],
+            ["Career"] =
+            [
+                ("skills",       "Skills",       0.35m, 1),
+                ("network",      "Network",      0.25m, 2),
+                ("mindset",      "Mindset",      0.25m, 3),
+                ("experience",   "Experience",   0.15m, 4),
+            ],
+            ["Relationships"] =
+            [
+                ("empathy",       "Empathy",       0.40m, 1),
+                ("communication", "Communication", 0.35m, 2),
+                ("trust",         "Trust",         0.25m, 3),
+            ],
+            ["Productivity"] =
+            [
+                ("focus",      "Focus",      0.40m, 1),
+                ("systems",    "Systems",    0.35m, 2),
+                ("energy",     "Energy",     0.25m, 3),
+            ],
+            ["Mindset"] =
+            [
+                ("resilience", "Resilience", 0.40m, 1),
+                ("growth",     "Growth",     0.35m, 2),
+                ("clarity",    "Clarity",    0.25m, 3),
+            ],
+            ["Programming"] =
+            [
+                ("technical",  "Technical",  0.45m, 1),
+                ("logic",      "Logic",      0.30m, 2),
+                ("creativity", "Creativity", 0.25m, 3),
+            ],
+            ["AI & Machine Learning"] =
+            [
+                ("technical",    "Technical",    0.40m, 1),
+                ("data_insight", "Data Insight", 0.35m, 2),
+                ("ethics",       "Ethics",       0.25m, 3),
+            ],
+            ["Fantasy"] =
+            [
+                ("imagination", "Imagination", 0.50m, 1),
+                ("lore",        "Lore",        0.30m, 2),
+                ("emotion",     "Emotion",     0.20m, 3),
+            ],
+            ["Sci-Fi"] =
+            [
+                ("logic",       "Logic",       0.40m, 1),
+                ("imagination", "Imagination", 0.35m, 2),
+                ("ethics",      "Ethics",      0.25m, 3),
+            ],
+            ["Thriller"] =
+            [
+                ("tension",   "Tension",   0.45m, 1),
+                ("logic",     "Logic",     0.30m, 2),
+                ("emotion",   "Emotion",   0.25m, 3),
+            ],
+        };
+
+        var existing = await db.CategoryScoreTypes
+            .ToDictionaryAsync(st => (st.CategoryId, st.Name));
+
+        foreach (var category in categories)
+        {
+            if (!scoreTypeMap.TryGetValue(category.Title, out var expected))
+                continue;
+
+            var expectedNames = expected.Select(e => e.Name).ToHashSet();
+
+            // Remove score types no longer in the map
+            var toRemove = existing.Values
+                .Where(st => st.CategoryId == category.Id && !expectedNames.Contains(st.Name))
+                .ToList();
+            if (toRemove.Count > 0)
+                db.CategoryScoreTypes.RemoveRange(toRemove);
+
+            // Insert or update
+            foreach (var (name, label, weight, order) in expected)
+            {
+                if (existing.TryGetValue((category.Id, name), out var existingSt))
+                {
+                    existingSt.Label       = label;
+                    existingSt.ScoreWeight = weight;
+                    existingSt.OrderToShow = order;
+                }
+                else
+                {
+                    db.CategoryScoreTypes.Add(new CategoryScoreType
+                    {
+                        CategoryId  = category.Id,
+                        Name        = name,
+                        Label       = label,
+                        ScoreWeight = weight,
+                        OrderToShow = order,
+                    });
+                }
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedTagsAndStoriesAsync(ApplicationDbContext db, List<Category> categories)

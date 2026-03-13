@@ -41,9 +41,18 @@ public class Story
     /// <summary>Optional supervisor specifically assigned by the contributor to review this story.</summary>
     public string? AssignedSupervisorId { get; set; }
 
+    // ── Score completion ──────────────────────────────────────────────────────
+    /// <summary>The score type that gates story completion. When a user's score for this type reaches <see cref="MaxScoreValue"/>, the story ends and the user is marked as having finished it.</summary>
+    public int? MaxScoreTypeId { get; set; }
+    public CategoryScoreType? MaxScoreType { get; set; }
+
+    /// <summary>Maximum score value for <see cref="MaxScoreTypeId"/>. Null means no score-based completion gate.</summary>
+    public int? MaxScoreValue { get; set; }
+
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<StoryDetail> StoryDetails { get; set; } = new List<StoryDetail>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
     public ICollection<StoryVote> StoryVotes { get; set; } = new List<StoryVote>();
+    public ICollection<StoryTranslation> Translations { get; set; } = new List<StoryTranslation>();
 }

@@ -29,6 +29,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserStoryProgress> UserStoryProgresses => Set<UserStoryProgress>();
     public DbSet<UserStoryAnswer> UserStoryAnswers => Set<UserStoryAnswer>();
     public DbSet<ContributedPointTransaction> ContributedPointTransactions => Set<ContributedPointTransaction>();
+    public DbSet<CategoryScoreType> CategoryScoreTypes => Set<CategoryScoreType>();
+    public DbSet<StoryTranslation> StoryTranslations => Set<StoryTranslation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
