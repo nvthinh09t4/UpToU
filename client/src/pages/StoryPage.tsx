@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Clock, User, Tag as TagIcon, BookOpen, Eye, Coins,
 import { storyApi } from '../services/storyApi';
 import { voteApi } from '../services/voteApi';
 import { creditApi } from '../services/creditApi';
+import { SEOHead, JsonLd } from '../components/SEOHead';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
 import { ReactionBar } from '../components/reactions/ReactionBar';
@@ -126,8 +127,36 @@ export function StoryPage() {
 
   const detail = story.latestDetail;
 
+  const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://uptou.com';
+  const pageUrl = `${SITE_URL}/stories/${storyId}`;
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: story.title,
+    description: story.excerpt ?? story.description ?? '',
+    image: story.coverImageUrl ?? undefined,
+    author: story.authorName
+      ? { '@type': 'Person', name: story.authorName }
+      : { '@type': 'Organization', name: 'UpToU' },
+    publisher: { '@type': 'Organization', name: 'UpToU', url: SITE_URL },
+    datePublished: story.publishDate ?? undefined,
+    url: pageUrl,
+    keywords: story.tags.map((t) => t.name).join(', '),
+  };
+
   return (
     <>
+      <SEOHead
+        title={story.title}
+        description={story.excerpt ?? story.description ?? undefined}
+        image={story.coverImageUrl}
+        url={pageUrl}
+        type="article"
+        publishedTime={story.publishDate ?? undefined}
+        author={story.authorName}
+        keywords={story.tags.map((t) => t.name)}
+      />
+      <JsonLd data={articleSchema} />
       {nav}
 
       {/* Hero with background image */}

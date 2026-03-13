@@ -5,6 +5,7 @@ import { ArrowLeft, Tag as TagIcon, BarChart3, BookOpen, Calendar, Clock, Star, 
 import { categoryApi } from '../services/categoryApi';
 import { storyApi } from '../services/storyApi';
 import { CategoryNav } from '../components/layout/CategoryNav';
+import { SEOHead, JsonLd } from '../components/SEOHead';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { AppHeader } from '../components/layout/AppHeader';
@@ -77,8 +78,31 @@ export function CategoryPage() {
   const featuredStories = stories.filter((s) => s.isFeatured);
   const regularStories = stories.filter((s) => !s.isFeatured);
 
+  const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://uptou.com';
+  const pageUrl = `${SITE_URL}/categories/${categoryId}`;
+  const keywords = [
+    category.title,
+    ...(category.children ?? []).map((c) => c.title),
+    'stories', 'UpToU',
+  ];
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: category.title, item: pageUrl },
+    ],
+  };
+
   return (
     <>
+      <SEOHead
+        title={`${category.title} Stories`}
+        description={category.description ?? `Browse stories in ${category.title} on UpToU.`}
+        url={pageUrl}
+        keywords={keywords}
+      />
+      <JsonLd data={breadcrumbSchema} />
       {nav}
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">

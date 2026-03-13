@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, MessageCircle, Trophy, ArrowRight, Coins } from 'lucide-react';
 import { categoryApi } from '../services/categoryApi';
+import { SEOHead, JsonLd } from '../components/SEOHead';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { AppHeader } from '../components/layout/AppHeader';
 import { Button } from '../components/ui/button';
@@ -27,6 +28,16 @@ const CATEGORY_COLORS = [
   'from-indigo-500 to-blue-600',
 ];
 
+const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://uptou.com';
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'UpToU',
+  url: SITE_URL,
+  description: 'Read curated stories, interact with content, earn credits and level up across finance, health, technology and more.',
+};
+
 export function HomePage() {
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -41,6 +52,12 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEOHead
+        description="UpToU — Read curated stories, interact with content, earn credits and level up across finance, health, technology and more."
+        url={SITE_URL}
+      />
+      <JsonLd data={websiteSchema} />
+
       <AppHeader />
       <CategoryNav />
 
