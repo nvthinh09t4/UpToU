@@ -15,8 +15,10 @@ export default defineConfig({
   testDir: '.',
   testMatch: ['**/*.spec.ts'],
 
+  // Global pre-flight: verify the API is reachable before running any tests
+  globalSetup: './api.check.ts',
+
   // Global test settings
-  // Setup tests override this to 120 s (Vite cold-start can take 30–40 s)
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -36,7 +38,6 @@ export default defineConfig({
 
   projects: [
     // ── Authentication setup ────────────────────────────────────────────────
-    // These run first and save auth cookies.
     {
       name: 'setup-client',
       testMatch: '**/global.setup.ts',
@@ -71,8 +72,9 @@ export default defineConfig({
     },
   ],
 
-  // Start the dev servers automatically when not in CI
-  // In CI the servers are expected to already be running
+  // ── Frontend dev servers ──────────────────────────────────────────────────
+  // Started automatically when not in CI (CI expects them pre-started).
+  // The API (port 5070) must be started separately — see api.check.ts.
   webServer: process.env.CI
     ? []
     : [
