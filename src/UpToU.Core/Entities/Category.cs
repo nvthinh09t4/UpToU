@@ -20,4 +20,5 @@ public class Category
     public ICollection<Category> Children { get; set; } = new List<Category>();
 
     public ICollection<Story> Stories { get; set; } = new List<Story>();
+    public ICollection<CategoryScoreType> ScoreTypes { get; set; } = new List<CategoryScoreType>();
 }

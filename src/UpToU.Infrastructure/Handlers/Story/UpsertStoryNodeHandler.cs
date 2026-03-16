@@ -29,8 +29,8 @@ public class UpsertStoryNodeHandler : IRequestHandler<UpsertStoryNodeCommand, Re
         StoryNode node;
         if (request.Id.HasValue)
         {
-            node = await _db.StoryNodes.FirstOrDefaultAsync(n => n.Id == request.Id.Value, ct)
-                ?? throw new KeyNotFoundException($"Node {request.Id} not found.");
+            node = await _db.StoryNodes.FirstOrDefaultAsync(n => n.Id == request.Id.Value, ct);
+            if (node is null) return Result<StoryNodeDto>.NotFound($"Node {request.Id} not found.");
         }
         else
         {
@@ -38,20 +38,24 @@ public class UpsertStoryNodeHandler : IRequestHandler<UpsertStoryNodeCommand, Re
             _db.StoryNodes.Add(node);
         }
 
-        node.Question           = request.Question;
-        node.QuestionSubtitle   = request.QuestionSubtitle;
-        node.IsStart            = request.IsStart;
-        node.BackgroundImageUrl = request.BackgroundImageUrl;
-        node.BackgroundColor    = request.BackgroundColor;
-        node.VideoUrl           = request.VideoUrl;
-        node.AnimationType      = request.AnimationType;
-        node.SortOrder          = request.SortOrder;
+        node.Question             = request.Question;
+        node.QuestionSubtitle     = request.QuestionSubtitle;
+        node.QuestionVi           = request.QuestionVi;
+        node.QuestionSubtitleVi   = request.QuestionSubtitleVi;
+        node.IsStart              = request.IsStart;
+        node.BackgroundImageUrl   = request.BackgroundImageUrl;
+        node.BackgroundColor      = request.BackgroundColor;
+        node.VideoUrl             = request.VideoUrl;
+        node.AnimationType        = request.AnimationType;
+        node.SortOrder            = request.SortOrder;
 
         await _db.SaveChangesAsync(ct);
 
         return Result<StoryNodeDto>.Success(new StoryNodeDto(
-            node.Id, node.StoryDetailId, node.Question, node.QuestionSubtitle, node.IsStart,
-            node.BackgroundImageUrl, node.BackgroundColor, node.VideoUrl, node.AnimationType,
-            node.SortOrder, new List<StoryNodeAnswerDto>()));
+            node.Id, node.StoryDetailId,
+            node.Question, node.QuestionSubtitle, node.QuestionVi, node.QuestionSubtitleVi,
+            node.IsStart, node.BackgroundImageUrl, node.BackgroundColor,
+            node.VideoUrl, node.AnimationType, node.SortOrder,
+            new List<StoryNodeAnswerDto>()));
     }
 }

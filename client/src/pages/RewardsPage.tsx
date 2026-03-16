@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { AppHeader } from '../components/layout/AppHeader';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
+import { RewardCard } from '../components/rewards/RewardCard';
 import { getRank, RANK_TIERS } from '../utils/rankHelper';
 import type { RewardItem } from '../types/credit';
 
@@ -26,88 +27,6 @@ const TX_TYPE_LABELS: Record<string, string> = {
   RewardUnlock: 'Reward Unlocked',
 };
 
-function RewardCard({
-  item,
-  balance,
-  onUnlock,
-  onToggle,
-}: {
-  item: RewardItem;
-  balance: number;
-  onUnlock: (id: number) => void;
-  onToggle: (id: number, activate: boolean) => void;
-}) {
-  const canAfford = balance >= item.creditCost;
-
-  return (
-    <div className="flex flex-col rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md">
-      {/* Preview */}
-      {item.previewUrl ? (
-        <img
-          src={item.previewUrl}
-          alt={item.name}
-          className="mb-3 h-20 w-20 self-center rounded-full object-cover"
-        />
-      ) : item.category === 'Title' ? (
-        <div className="mb-3 flex h-20 w-full items-center justify-center rounded-lg bg-primary/5">
-          <span className="text-lg font-bold text-primary">{item.value ?? item.name}</span>
-        </div>
-      ) : (
-        <div className="mb-3 flex h-20 w-20 items-center justify-center self-center rounded-full bg-muted">
-          <Gift className="h-8 w-8 text-muted-foreground" />
-        </div>
-      )}
-
-      <h3 className="text-sm font-semibold">{item.name}</h3>
-      {item.description && (
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-      )}
-
-      <div className="mt-auto pt-3 flex items-center justify-between">
-        <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-          <Coins className="h-3.5 w-3.5" />
-          {item.creditCost.toLocaleString()}
-        </span>
-
-        {item.isUnlocked ? (
-          item.category === 'NameChange' ? (
-            <Link to="/dashboard">
-              <Button size="sm" variant="outline" className="gap-1">
-                <Type className="h-3.5 w-3.5" />
-                Use on Profile
-              </Button>
-            </Link>
-          ) : (
-            <Button
-              size="sm"
-              variant={item.isActive ? 'default' : 'outline'}
-              onClick={() => onToggle(item.id, !item.isActive)}
-            >
-              {item.isActive ? (
-                <>
-                  <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                  Equipped
-                </>
-              ) : (
-                'Equip'
-              )}
-            </Button>
-          )
-        ) : (
-          <Button
-            size="sm"
-            disabled={!canAfford}
-            onClick={() => onUnlock(item.id)}
-          >
-            <Lock className="mr-1 h-3.5 w-3.5" />
-            Unlock
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function MyItemCard({
   item,
   onToggle,
@@ -116,7 +35,7 @@ function MyItemCard({
   onToggle: (id: number, activate: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md">
+    <div className="flex flex-col rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
       {/* Preview */}
       {item.previewUrl ? (
         <img
@@ -125,8 +44,8 @@ function MyItemCard({
           className="mb-3 h-20 w-20 self-center rounded-full object-cover"
         />
       ) : item.category === 'Title' ? (
-        <div className="mb-3 flex h-20 w-full items-center justify-center rounded-lg bg-primary/5">
-          <span className="text-lg font-bold text-primary">{item.value ?? item.name}</span>
+        <div className="mb-3 flex h-20 w-full items-center justify-center rounded-xl bg-violet-500/5">
+          <span className="text-lg font-bold text-violet-600">{item.value ?? item.name}</span>
         </div>
       ) : (
         <div className="mb-3 flex h-20 w-20 items-center justify-center self-center rounded-full bg-muted">
@@ -148,7 +67,7 @@ function MyItemCard({
       <div className="mt-auto pt-1">
         {item.category === 'NameChange' ? (
           <Link to="/dashboard" className="block">
-            <Button size="sm" variant="outline" className="w-full gap-1">
+            <Button size="sm" variant="outline" className="w-full gap-1 rounded-full">
               <Type className="h-3.5 w-3.5" />
               Use on Profile
             </Button>
@@ -157,7 +76,7 @@ function MyItemCard({
           <Button
             size="sm"
             variant={item.isActive ? 'default' : 'outline'}
-            className="w-full"
+            className="w-full rounded-full"
             onClick={() => onToggle(item.id, !item.isActive)}
           >
             {item.isActive ? (
@@ -183,7 +102,7 @@ function RankSection({ totalCreditsEarned }: { totalCreditsEarned: number }) {
   })();
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center gap-4">
         {/* Rank badge */}
         <div
@@ -214,7 +133,6 @@ function RankSection({ totalCreditsEarned }: { totalCreditsEarned: number }) {
                 : `${totalCreditsEarned.toLocaleString()} / ${rank.nextAt.toLocaleString()} to ${rank.nextLabel}`}
             </span>
           </div>
-          {/* Progress bar */}
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full transition-all"
@@ -230,7 +148,6 @@ function RankSection({ totalCreditsEarned }: { totalCreditsEarned: number }) {
         </div>
       </div>
 
-      {/* Star progress within tier (show how far into current star) */}
       <div className="mt-3 flex items-center gap-1.5">
         <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Star progress</span>
         <div className="flex-1 h-1 overflow-hidden rounded-full bg-muted">
@@ -242,7 +159,6 @@ function RankSection({ totalCreditsEarned }: { totalCreditsEarned: number }) {
         <span className="text-[10px] text-muted-foreground">{rank.progressPct}%</span>
       </div>
 
-      {/* Hint about star base */}
       <p className="mt-1 text-[10px] text-muted-foreground">
         Current star started at {starBase.toLocaleString()} credits
       </p>
@@ -295,7 +211,6 @@ export function RewardsPage() {
     },
   });
 
-  // After any toggle, refresh the NameChange ticket status on the dashboard
   function invalidateNameChange() {
     queryClient.invalidateQueries({ queryKey: ['rewards', 'NameChange'] });
   }
@@ -325,13 +240,11 @@ export function RewardsPage() {
     });
   }
 
-  // Group all rewards by category
   const grouped = rewards.reduce<Record<string, RewardItem[]>>((acc, item) => {
     (acc[item.category] ??= []).push(item);
     return acc;
   }, {});
 
-  // Unlocked items grouped by category
   const unlockedItems = rewards.filter((item) => item.isUnlocked);
   const unlockedGrouped = unlockedItems.reduce<Record<string, RewardItem[]>>((acc, item) => {
     (acc[item.category] ??= []).push(item);
@@ -340,74 +253,73 @@ export function RewardsPage() {
 
   const totalCreditsEarned = balanceData?.totalCreditsEarned ?? 0;
 
+  const tabs = [
+    { key: 'shop' as const,     label: 'Rewards Shop',   icon: <Gift className="h-4 w-4" /> },
+    { key: 'myitems' as const,  label: 'My Items',       icon: <Package className="h-4 w-4" /> },
+    { key: 'history' as const,  label: 'Credit History', icon: <History className="h-4 w-4" /> },
+  ];
+
   return (
     <>
       <AppHeader />
       <CategoryNav />
 
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        {/* Header */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Rewards Shop</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Earn credits by reading stories, logging in daily, and more. Spend them on titles, avatar frames, and exclusive content.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-2">
-              <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                {(user?.creditBalance ?? 0).toLocaleString()}
-              </span>
-              <span className="text-xs text-muted-foreground">credits</span>
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b" style={{ background: 'linear-gradient(160deg,#1a0f00,#1c1200,#0e0900)' }}>
+        <div className="pointer-events-none absolute -top-16 right-0 h-56 w-56 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white">Rewards Shop</h1>
+              <p className="mt-1 text-sm text-white/50">
+                Earn credits by reading stories, logging in daily, and more.
+              </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => claimDaily()} disabled={claimingDaily}>
-              <Gift className="mr-1 h-3.5 w-3.5" />
-              {claimingDaily ? 'Claiming…' : 'Daily Bonus'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-full bg-amber-500/15 px-4 py-2">
+                <Coins className="h-5 w-5 text-amber-400" />
+                <span className="text-lg font-bold text-amber-400">
+                  {(user?.creditBalance ?? 0).toLocaleString()}
+                </span>
+                <span className="text-xs text-white/40">credits</span>
+              </div>
+              <Button size="sm" variant="outline" className="rounded-full border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
+                onClick={() => claimDaily()} disabled={claimingDaily}>
+                <Gift className="mr-1 h-3.5 w-3.5" />
+                {claimingDaily ? 'Claiming…' : 'Daily Bonus'}
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         {/* Tabs */}
-        <div className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
-          <button
-            onClick={() => setActiveTab('shop')}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'shop' ? 'bg-background shadow-sm' : 'hover:bg-background/50'
-            }`}
-          >
-            <Gift className="mr-1.5 inline h-4 w-4" />
-            Rewards Shop
-          </button>
-          <button
-            onClick={() => setActiveTab('myitems')}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'myitems' ? 'bg-background shadow-sm' : 'hover:bg-background/50'
-            }`}
-          >
-            <Package className="mr-1.5 inline h-4 w-4" />
-            My Items
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'history' ? 'bg-background shadow-sm' : 'hover:bg-background/50'
-            }`}
-          >
-            <History className="mr-1.5 inline h-4 w-4" />
-            Credit History
-          </button>
+        <div className="mb-6 flex gap-1.5">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                activeTab === tab.key
+                  ? 'text-white shadow-sm'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              style={activeTab === tab.key ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } : undefined}
+            >
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
         </div>
 
         {activeTab === 'shop' && (
           <>
-            {/* Rank section */}
             {!!user && <RankSection totalCreditsEarned={totalCreditsEarned} />}
 
             {loadingRewards ? (
               <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
               </div>
             ) : rewards.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">
@@ -417,7 +329,7 @@ export function RewardsPage() {
             ) : (
               Object.entries(grouped).map(([category, items]) => (
                 <section key={category} className="mb-8">
-                  <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
                     {CATEGORY_LABELS[category]?.icon}
                     {CATEGORY_LABELS[category]?.label ?? category}
                   </h2>
@@ -437,8 +349,8 @@ export function RewardsPage() {
             )}
 
             {/* How to earn */}
-            <section className="mt-10 rounded-lg border border-border bg-muted/30 p-6">
-              <h2 className="mb-4 text-lg font-semibold">How to Earn Credits</h2>
+            <section className="mt-10 rounded-2xl border border-border bg-muted/30 p-6">
+              <h2 className="mb-4 text-lg font-bold">How to Earn Credits</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
                   { label: 'Daily Login', amount: 10, desc: 'Log in and claim once per day' },
@@ -446,7 +358,7 @@ export function RewardsPage() {
                   { label: 'Post a Comment', amount: 2, desc: 'Share your thoughts on a story' },
                   { label: 'Receive an Upvote', amount: 1, desc: 'Others appreciate your contribution' },
                 ].map((item) => (
-                  <div key={item.label} className="flex items-start gap-3 rounded-md bg-background p-3">
+                  <div key={item.label} className="flex items-start gap-3 rounded-xl bg-background p-3">
                     <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600 dark:text-amber-400">
                       +{item.amount}
                     </span>
@@ -465,7 +377,7 @@ export function RewardsPage() {
           <>
             {loadingRewards ? (
               <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
               </div>
             ) : unlockedItems.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">
@@ -476,7 +388,7 @@ export function RewardsPage() {
             ) : (
               Object.entries(unlockedGrouped).map(([category, items]) => (
                 <section key={category} className="mb-8">
-                  <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
                     {CATEGORY_LABELS[category]?.icon}
                     {CATEGORY_LABELS[category]?.label ?? category}
                     <span className="ml-1 text-sm font-normal text-muted-foreground">
@@ -502,7 +414,7 @@ export function RewardsPage() {
           <>
             {loadingHistory ? (
               <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
               </div>
             ) : !history || history.transactions.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">
@@ -511,7 +423,7 @@ export function RewardsPage() {
               </div>
             ) : (
               <>
-                <div className="rounded-lg border border-border">
+                <div className="rounded-2xl border border-border">
                   {history.transactions.map((tx, i) => (
                     <div
                       key={tx.id}
@@ -538,7 +450,7 @@ export function RewardsPage() {
                       </div>
                       <span
                         className={`text-sm font-bold ${
-                          tx.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'
+                          tx.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
                         }`}
                       >
                         {tx.amount >= 0 ? '+' : ''}
@@ -548,12 +460,12 @@ export function RewardsPage() {
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {history.totalCount > 20 && (
                   <div className="mt-4 flex items-center justify-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
+                      className="rounded-full"
                       disabled={historyPage <= 1}
                       onClick={() => setHistoryPage((p) => p - 1)}
                     >
@@ -565,6 +477,7 @@ export function RewardsPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="rounded-full"
                       disabled={historyPage >= Math.ceil(history.totalCount / 20)}
                       onClick={() => setHistoryPage((p) => p + 1)}
                     >

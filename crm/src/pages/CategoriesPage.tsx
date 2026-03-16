@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, FormControlLabel,
-  IconButton, InputAdornment, MenuItem, Select, Switch,
+  DialogActions, DialogContent, DialogTitle,
+  IconButton, InputAdornment,
   TextField, Tooltip, Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
@@ -13,119 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import SearchIcon from '@mui/icons-material/Search'
 import { adminService } from '@/services/adminService'
 import type { Category } from '@/types'
-
-type CategoryFormData = {
-  title: string
-  description: string
-  isActive: boolean
-  scoreWeight: number
-  orderToShow: number
-  parentId: number | null
-}
-
-const EMPTY_FORM: CategoryFormData = {
-  title: '',
-  description: '',
-  isActive: true,
-  scoreWeight: 1,
-  orderToShow: 0,
-  parentId: null,
-}
-
-interface CategoryDialogProps {
-  open: boolean
-  category: Category | null
-  allCategories: Category[]
-  onClose: () => void
-  onSave: (data: CategoryFormData) => void
-  saving: boolean
-}
-
-function CategoryDialog({ open, category, allCategories, onClose, onSave, saving }: CategoryDialogProps) {
-  const [form, setForm] = useState<CategoryFormData>(
-    category
-      ? {
-          title: category.title,
-          description: category.description ?? '',
-          isActive: category.isActive,
-          scoreWeight: category.scoreWeight,
-          orderToShow: category.orderToShow,
-          parentId: category.parentId,
-        }
-      : EMPTY_FORM
-  )
-
-  const set = <K extends keyof CategoryFormData>(key: K, value: CategoryFormData[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }))
-
-  const rootCategories = allCategories.filter((c) => c.parentId === null && c.id !== category?.id)
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{category ? `Edit — ${category.title}` : 'New Category'}</DialogTitle>
-      <DialogContent className="flex flex-col gap-4 pt-4!">
-        <TextField
-          label="Title"
-          value={form.title}
-          onChange={(e) => set('title', e.target.value)}
-          fullWidth
-          required
-        />
-        <TextField
-          label="Description"
-          value={form.description}
-          onChange={(e) => set('description', e.target.value)}
-          fullWidth
-          multiline
-          rows={3}
-        />
-        <Box className="flex gap-4">
-          <TextField
-            label="Score Weight"
-            type="number"
-            value={form.scoreWeight}
-            onChange={(e) => set('scoreWeight', parseFloat(e.target.value) || 1)}
-            inputProps={{ step: 0.1, min: 0 }}
-            sx={{ flex: 1 }}
-          />
-          <TextField
-            label="Order"
-            type="number"
-            value={form.orderToShow}
-            onChange={(e) => set('orderToShow', parseInt(e.target.value) || 0)}
-            inputProps={{ min: 0 }}
-            sx={{ flex: 1 }}
-          />
-        </Box>
-        <Select
-          value={form.parentId ?? ''}
-          onChange={(e) => set('parentId', (e.target.value as unknown as string) === '' ? null : Number(e.target.value))}
-          displayEmpty
-          fullWidth
-        >
-          <MenuItem value="">— No parent (root category) —</MenuItem>
-          {rootCategories.map((c) => (
-            <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
-          ))}
-        </Select>
-        <FormControlLabel
-          control={<Switch checked={form.isActive} onChange={(e) => set('isActive', e.target.checked)} />}
-          label="Active"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button
-          variant="contained"
-          disabled={saving || !form.title.trim()}
-          onClick={() => onSave(form)}
-        >
-          {saving ? <CircularProgress size={20} /> : 'Save'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
-}
+import { CategoryFormDialog, type CategoryFormData } from '@/components/categories/CategoryFormDialog'
 
 function flattenCategories(cats: Category[]): Category[] {
   return cats.flatMap((c) => [c, ...flattenCategories(c.children)])
@@ -305,7 +193,7 @@ export default function CategoriesPage() {
         />
       </Box>
 
-      <CategoryDialog
+      <CategoryFormDialog
         open={dialogOpen}
         category={editing}
         allCategories={allFlat}

@@ -1,67 +1,19 @@
-import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  Bookmark, Check, Edit3, Gift, Lock,
-  Medal, Quote, Star, Trophy, Type, X, Zap,
+  Bookmark, Check, Gift, Lock,
+  Medal, Trophy, Zap,
 } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
+import { RankMedal, RANK_ICONS } from '../components/profile/RankMedal';
+import { QuoteEditor } from '../components/profile/QuoteEditor';
+import { DisplayNameEditor } from '../components/profile/DisplayNameEditor';
+import { StreakBadge } from '../components/streak/StreakBadge';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/authApi';
 import { creditApi } from '../services/creditApi';
+import { streakApi } from '../services/streakApi';
 import { getRank, RANK_TIERS } from '../utils/rankHelper';
-
-// ── Rank medal ────────────────────────────────────────────────────────────────
-
-const RANK_ICONS: Record<string, string> = {
-  Herald: '⚔️', Guardian: '🛡️', Crusader: '⚜️', Archon: '🔱',
-  Legend: '👑', Ancient: '🌙', Divine: '✨', Immortal: '🔥',
-};
-
-function RankMedal({ rankName, stars, color, size = 'lg' }: {
-  rankName: string; stars: number; color: string; size?: 'sm' | 'lg';
-}) {
-  const lg = size === 'lg';
-  const glow = rankName === 'Divine' || rankName === 'Immortal';
-  const dim = lg ? { w: 120, h: 140, icon: 40 } : { w: 52, h: 60, icon: 17 };
-
-  return (
-    <div className={`flex flex-col items-center ${lg ? 'gap-3' : 'gap-1'}`}>
-      <div
-        className="relative flex items-center justify-center"
-        style={{
-          width: dim.w, height: dim.h,
-          clipPath: 'polygon(50% 0%, 100% 15%, 100% 65%, 50% 100%, 0% 65%, 0% 15%)',
-          background: glow
-            ? `radial-gradient(ellipse at 40% 30%, ${color}ff, ${color}88)`
-            : `linear-gradient(145deg, ${color}cc, ${color}66)`,
-          boxShadow: glow ? `0 0 ${lg ? 28 : 12}px ${color}66` : undefined,
-        }}
-      >
-        <div
-          className="absolute"
-          style={{
-            inset: lg ? '10px 15px' : '5px 7px',
-            clipPath: 'polygon(50% 0%, 100% 15%, 100% 65%, 50% 100%, 0% 65%, 0% 15%)',
-            background: 'rgba(255,255,255,0.1)',
-          }}
-        />
-        <span className="relative z-10" style={{ fontSize: dim.icon, filter: glow ? 'drop-shadow(0 0 5px white)' : undefined }}>
-          {RANK_ICONS[rankName] ?? '🏅'}
-        </span>
-      </div>
-      <span className={`font-bold tracking-wide ${lg ? 'text-base' : 'text-[10px]'}`} style={{ color }}>
-        {rankName}
-      </span>
-      <div className="flex gap-0.5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star key={i} className={lg ? 'h-3.5 w-3.5' : 'h-2 w-2'}
-            style={{ color: i < stars ? color : '#374151', fill: i < stars ? color : 'transparent' }} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ── Achievements ──────────────────────────────────────────────────────────────
 
@@ -86,120 +38,6 @@ function buildAchievements(credits: number, rankName: string, hasTitle: boolean,
   ];
 }
 
-// ── Quote editor ──────────────────────────────────────────────────────────────
-
-function QuoteEditor({ currentQuote, onSave }: { currentQuote: string | null; onSave: (q: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(currentQuote ?? '');
-
-  if (!editing) {
-    return (
-      <div className="group flex items-start gap-2">
-        <Quote className="mt-0.5 h-4 w-4 flex-shrink-0 opacity-40" />
-        <p className={`flex-1 text-sm italic ${currentQuote ? 'opacity-75' : 'opacity-30'}`}>
-          {currentQuote ?? 'Add a favourite quote…'}
-        </p>
-        <button onClick={() => { setValue(currentQuote ?? ''); setEditing(true); }}
-          className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-          <Edit3 className="h-3.5 w-3.5 opacity-50 hover:opacity-100" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <textarea value={value} onChange={(e) => setValue(e.target.value.slice(0, 200))}
-        placeholder="Your favourite quote (max 200 chars)" autoFocus rows={2}
-        className="w-full resize-none rounded-lg bg-white/10 px-3 py-2 text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-white" />
-      <div className="flex items-center justify-between">
-        <span className="text-xs opacity-30">{value.length}/200</span>
-        <div className="flex gap-2">
-          <button onClick={() => setEditing(false)}
-            className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1 text-xs opacity-70 hover:opacity-100">
-            <X className="h-3 w-3" /> Cancel
-          </button>
-          <button onClick={() => { onSave(value); setEditing(false); }}
-            className="flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-xs text-white hover:bg-white/30">
-            <Check className="h-3 w-3" /> Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Display name editor ───────────────────────────────────────────────────────
-
-function formatExpiry(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (d <= new Date()) return null; // already expired
-  const diffMs = d.getTime() - Date.now();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 1) return 'expires today';
-  if (diffDays <= 7) return `expires in ${diffDays} days`;
-  return `expires ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
-}
-
-function DisplayNameEditor({
-  currentName, expiresAt, onSave,
-}: {
-  currentName: string | null;
-  expiresAt: string | null;
-  onSave: (n: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(currentName ?? '');
-
-  const expiry = formatExpiry(expiresAt);
-  const isExpired = expiresAt !== null && new Date(expiresAt) <= new Date();
-  const activeName = isExpired ? null : currentName;
-
-  if (!open) {
-    return (
-      <div className="flex flex-col gap-1">
-        <button
-          onClick={() => { setValue(activeName ?? ''); setOpen(true); }}
-          className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/30 px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/60 hover:text-white"
-        >
-          <Type className="h-3 w-3" />
-          {activeName ? `Display name: "${activeName}"` : 'Set display name (use ticket)'}
-        </button>
-        {activeName && expiry && (
-          <p className="pl-1 text-[10px] text-white/40">{expiry}</p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value.slice(0, 100))}
-        placeholder="Your display name (max 100 chars)"
-        autoFocus
-        maxLength={100}
-        className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-white"
-      />
-      <div className="flex items-center justify-between">
-        <span className="text-xs opacity-30">{value.length}/100</span>
-        <div className="flex gap-2">
-          <button onClick={() => setOpen(false)}
-            className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1 text-xs opacity-70 hover:opacity-100">
-            <X className="h-3 w-3" /> Cancel
-          </button>
-          <button onClick={() => { onSave(value); setOpen(false); }}
-            className="flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-xs text-white hover:bg-white/30">
-            <Check className="h-3 w-3" /> Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -220,6 +58,13 @@ export function DashboardPage() {
       if (accessToken) setAuth(accessToken, updated);
       qc.invalidateQueries({ queryKey: ['my-stats'] });
     },
+  });
+
+  const { data: streak } = useQuery({
+    queryKey: ['my-streak'],
+    queryFn: streakApi.getMyStreak,
+    enabled: !!user,
+    staleTime: 60_000,
   });
 
   const { data: nameChangeTickets = [] } = useQuery({
@@ -302,6 +147,7 @@ export function DashboardPage() {
               {user.mentionHandle && (
                 <p className="mt-0.5 text-sm text-muted-foreground">@{user.mentionHandle}</p>
               )}
+              <StreakBadge className="mt-2" />
               <div className="mt-3 max-w-sm space-y-2">
                 <QuoteEditor currentQuote={user.favoriteQuote} onSave={(q) => !savingQuote && saveQuote(q)} />
                 {hasNameChangeTicket && (
@@ -319,7 +165,7 @@ export function DashboardPage() {
                   { to: '/leaderboard', icon: <Trophy className="h-3.5 w-3.5" />, label: 'Leaderboard' },
                 ].map((l) => (
                   <Link key={l.to} to={l.to}
-                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                    className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white">
                     {l.icon} {l.label}
                   </Link>
                 ))}
@@ -386,7 +232,7 @@ export function DashboardPage() {
                 { label: 'Global Rank', value: leaderPos ? `#${leaderPos}${top20 ? ' 🏆' : ''}` : '—', icon: <Trophy className="h-4 w-4" />, color: top20 ? '#ffd700' : undefined },
                 { label: 'Achievements', value: `${unlocked} / ${achievements.length}`, icon: <Medal className="h-4 w-4" />, color: '#8b5cf6' },
               ].map((s) => (
-                <div key={s.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4">
+                <div key={s.label} className="flex flex-col gap-1 rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-center gap-1.5" style={{ color: s.color ?? undefined }}>
                     {s.icon}
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
@@ -394,6 +240,21 @@ export function DashboardPage() {
                   <p className="text-xl font-bold">{s.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Streak card */}
+            <div className="rounded-xl border border-border bg-card p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Current Streak</p>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-2xl">🔥</span>
+                <span className="text-2xl font-bold text-amber-400">{streak?.currentStreak ?? 0}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">days</p>
+              {streak && streak.nextMilestone > 0 && (
+                <p className="text-[10px] text-amber-400/60 mt-1">
+                  {streak.nextMilestone - streak.currentStreak}d to +{streak.creditsAtNextMilestone} bonus
+                </p>
+              )}
             </div>
 
             {/* Top 20 callout */}
@@ -417,7 +278,7 @@ export function DashboardPage() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {achievements.map((a) => (
                   <div key={a.id} title={a.description}
-                    className="flex items-center gap-2.5 rounded-xl border p-3 transition-all"
+                    className="flex items-center gap-2.5 rounded-2xl border p-3 transition-all"
                     style={{
                       borderColor: a.unlocked ? `${a.color}40` : undefined,
                       background: a.unlocked ? `${a.color}0c` : undefined,

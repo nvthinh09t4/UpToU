@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using UpToU.Core.AI;
 using UpToU.Core.Entities;
 using UpToU.Core.Interfaces;
+using UpToU.Infrastructure.AI;
 using UpToU.Infrastructure.Data;
 using UpToU.Infrastructure.Options;
 using UpToU.Infrastructure.Services;
@@ -42,6 +44,8 @@ public static class DependencyInjection
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IBadgeAwardService, BadgeAwardService>();
+        services.AddScoped<IStoryBehaviorEvaluator, NoOpStoryBehaviorEvaluator>();
 
         services.AddHttpContextAccessor();
 

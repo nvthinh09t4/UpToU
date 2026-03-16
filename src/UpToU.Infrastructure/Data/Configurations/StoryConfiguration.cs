@@ -47,5 +47,13 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
         builder.HasMany(s => s.Tags)
                .WithMany(t => t.Stories)
                .UsingEntity(j => j.ToTable("StoryTags"));
+
+        builder.HasOne(s => s.MaxScoreType)
+               .WithMany()
+               .HasForeignKey(s => s.MaxScoreTypeId)
+               .OnDelete(DeleteBehavior.SetNull)
+               .IsRequired(false);
+
+        builder.HasIndex(s => s.MaxScoreTypeId);
     }
 }

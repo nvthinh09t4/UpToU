@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UpToU.Core.Commands.Category;
 using UpToU.Core.DTOs.Category;
+using UpToU.Core.DTOs.Story;
 
 namespace UpToU.API.Controllers;
 
@@ -69,5 +71,81 @@ public class CategoryController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteCategoryCommand(id), ct);
         return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── Score Types ───────────────────────────────────────────────────────────
+
+    [HttpGet("admin/categories/{id:int}/score-types")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult<List<CategoryScoreTypeDto>>> GetScoreTypes(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetCategoryScoreTypesQuery(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("admin/categories/{id:int}/score-types")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult<CategoryScoreTypeDto>> UpsertScoreType(
+        int id,
+        [FromBody] UpsertCategoryScoreTypeCommand command,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(command with { CategoryId = id }, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpDelete("admin/categories/score-types/{scoreTypeId:int}")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult> DeleteScoreType(int scoreTypeId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteCategoryScoreTypeCommand(scoreTypeId), ct);
+        return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── Badges ────────────────────────────────────────────────────────────────
+
+    [HttpGet("categories/{id:int}/badges")]
+    public async Task<ActionResult<List<CategoryBadgeDto>>> GetBadges(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetCategoryBadgesQuery(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpGet("admin/categories/{id:int}/badges")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult<List<CategoryBadgeDto>>> GetBadgesAdmin(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetCategoryBadgesQuery(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("admin/categories/{id:int}/badges")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult<CategoryBadgeDto>> UpsertBadge(
+        int id,
+        [FromBody] UpsertCategoryBadgeCommand command,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(command with { CategoryId = id }, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpDelete("admin/categories/badges/{badgeId:int}")]
+    [Authorize(Policy = "StaffOrAdmin")]
+    public async Task<ActionResult> DeleteBadge(int badgeId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteCategoryBadgeCommand(badgeId), ct);
+        return result.IsSuccess ? NoContent() : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    // ── User Badges ───────────────────────────────────────────────────────────
+
+    [HttpGet("users/me/badges")]
+    [Authorize]
+    public async Task<ActionResult<List<UserCategoryBadgeDto>>> GetMyBadges(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var result = await _mediator.Send(new GetUserBadgesQuery(userId), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
 }

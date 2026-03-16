@@ -1,0 +1,12 @@
+{
+  "name": "uptou",
+  "private": true,
+  "scripts": {
+    "test:e2e": "npm test --prefix e2e",
+    "test:e2e:client": "npm run test:client --prefix e2e",
+    "test:e2e:crm": "npm run test:crm --prefix e2e",
+    "test:e2e:headed": "npm run test:headed --prefix e2e",
+    "test:e2e:ui": "npm run test:ui --prefix e2e",
+    "test:e2e:report": "npm run report --prefix e2e"
+  }
+}

@@ -12,6 +12,8 @@ public class StoryNodeConfiguration : IEntityTypeConfiguration<StoryNode>
 
         builder.Property(n => n.Question).HasMaxLength(2000).IsRequired();
         builder.Property(n => n.QuestionSubtitle).HasMaxLength(500);
+        builder.Property(n => n.QuestionVi).HasMaxLength(2000);
+        builder.Property(n => n.QuestionSubtitleVi).HasMaxLength(500);
         builder.Property(n => n.BackgroundImageUrl).HasMaxLength(2000);
         builder.Property(n => n.BackgroundColor).HasMaxLength(50);
         builder.Property(n => n.VideoUrl).HasMaxLength(2000);

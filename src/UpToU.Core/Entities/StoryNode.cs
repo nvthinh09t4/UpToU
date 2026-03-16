@@ -6,9 +6,13 @@ public class StoryNode
     public int StoryDetailId { get; set; }
     public StoryDetail StoryDetail { get; set; } = null!;
 
-    /// <summary>The question/prompt shown to the user.</summary>
+    /// <summary>The question/prompt shown to the user (English / default language).</summary>
     public string Question { get; set; } = string.Empty;
     public string? QuestionSubtitle { get; set; }
+
+    /// <summary>Vietnamese translation of <see cref="Question"/>.</summary>
+    public string? QuestionVi { get; set; }
+    public string? QuestionSubtitleVi { get; set; }
 
     /// <summary>True for the single entry-point node in this revision.</summary>
     public bool IsStart { get; set; }

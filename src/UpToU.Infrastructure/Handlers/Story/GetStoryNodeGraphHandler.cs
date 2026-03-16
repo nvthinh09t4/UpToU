@@ -25,10 +25,14 @@ public class GetStoryNodeGraphHandler : IRequestHandler<GetStoryNodeGraphQuery, 
             .Where(n => n.StoryDetailId == request.StoryDetailId)
             .OrderBy(n => n.SortOrder).ThenBy(n => n.Id)
             .Select(n => new StoryNodeDto(
-                n.Id, n.StoryDetailId, n.Question, n.QuestionSubtitle, n.IsStart,
-                n.BackgroundImageUrl, n.BackgroundColor, n.VideoUrl, n.AnimationType, n.SortOrder,
+                n.Id, n.StoryDetailId,
+                n.Question, n.QuestionSubtitle, n.QuestionVi, n.QuestionSubtitleVi,
+                n.IsStart, n.BackgroundImageUrl, n.BackgroundColor, n.VideoUrl, n.AnimationType, n.SortOrder,
                 n.Answers.OrderBy(a => a.SortOrder).ThenBy(a => a.Id)
-                    .Select(a => new StoryNodeAnswerDto(a.Id, a.Text, a.PointsAwarded, a.NextNodeId, a.Color, a.SortOrder))
+                    .Select(a => new StoryNodeAnswerDto(
+                        a.Id, a.Text, a.TextVi, a.PointsAwarded, a.ScoreDeltas,
+                        a.NextNodeId, a.BranchWeights, a.Feedback, a.FeedbackVi,
+                        a.Color, a.SortOrder))
                     .ToList()))
             .ToListAsync(ct);
 

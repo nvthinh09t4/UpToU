@@ -20,6 +20,9 @@ public class ApplicationUser : IdentityUser
 
     // ── Credit / reward system ──────────────────────────────────────────────────
     public int CreditBalance { get; set; }
+
+    /// <summary>Accumulated points earned when other users finish stories authored by this user.</summary>
+    public int ContributedPoints { get; set; }
     public string? ActiveTitle { get; set; }
     public string? ActiveAvatarFrameUrl { get; set; }
     public string? AvatarUrl { get; set; }

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Private authenticated routes — no indexing needed
+Disallow: /dashboard
+Disallow: /progress
+Disallow: /bookmarks
+Disallow: /notifications
+Disallow: /rewards
+Disallow: /login
+Disallow: /register
+Disallow: /auth/
+
+Sitemap: https://uptou.com/sitemap.xml

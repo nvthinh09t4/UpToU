@@ -15,3 +15,23 @@ public record CategoryDto(
     string? ModifiedBy,
     List<CategoryDto> Children
 );
+
+public record CategoryBadgeDto(
+    int Id,
+    int Tier,
+    string Label,
+    string? LabelVi,
+    int ScoreThreshold,
+    string? BadgeImageUrl
+);
+
+public record UserCategoryBadgeDto(
+    int BadgeId,
+    int CategoryId,
+    string CategoryTitle,
+    int Tier,
+    string Label,
+    string? LabelVi,
+    string? BadgeImageUrl,
+    DateTime AwardedAt
+);

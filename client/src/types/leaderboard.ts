@@ -27,3 +27,22 @@ export interface LeaderboardSummary {
 }
 
 export type TimePeriod = 'AllTime' | 'Monthly' | 'Weekly';
+
+export interface ContributorLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  mentionHandle: string | null;
+  activeTitle: string | null;
+  activeAvatarFrameUrl: string | null;
+  avatarUrl: string | null;
+  contributedPoints: number;
+  uniqueReaders: number;
+  /** True when this user currently holds the exclusive Contributor Champion title. */
+  isChampion: boolean;
+}
+
+export interface ContributorLeaderboard {
+  boardType: 'Contributor';
+  entries: ContributorLeaderboardEntry[];
+}

@@ -13,6 +13,8 @@ public record UpsertStoryNodeCommand(
     int StoryDetailId,
     string Question,
     string? QuestionSubtitle,
+    string? QuestionVi,
+    string? QuestionSubtitleVi,
     bool IsStart,
     string? BackgroundImageUrl,
     string? BackgroundColor,
@@ -27,8 +29,13 @@ public record UpsertStoryNodeAnswerCommand(
     int? Id,
     int StoryNodeId,
     string Text,
+    string? TextVi,
     int PointsAwarded,
+    Dictionary<string, int> ScoreDeltas,
     int? NextNodeId,
+    Dictionary<string, int> BranchWeights,
+    string? Feedback,
+    string? FeedbackVi,
     string? Color,
     int SortOrder
 ) : IRequest<Result<StoryNodeAnswerDto>>;

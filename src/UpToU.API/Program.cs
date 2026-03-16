@@ -90,19 +90,17 @@ builder.Services
     });
 
 // ── Authorization ─────────────────────────────────────────────────────────────
-builder.Services.AddAuthorization(options =>
-{
+builder.Services.AddAuthorizationBuilder()
     // Admin-only operations: role/ban/reward management (no story approval)
-    options.AddPolicy("AdminOnly",               p => p.RequireRole("Admin"));
+    .AddPolicy("AdminOnly",               p => p.RequireRole("Admin"))
     // Story approval/rejection: Supervisor + Senior Supervisor (NOT Admin)
-    options.AddPolicy("StaffOnly",               p => p.RequireRole("Supervisor", "Senior Supervisor"));
+    .AddPolicy("StaffOnly",               p => p.RequireRole("Supervisor", "Senior Supervisor"))
     // Role assignment: Admin + Senior Supervisor
-    options.AddPolicy("SeniorSupervisorOrAdmin", p => p.RequireRole("Admin", "Senior Supervisor"));
+    .AddPolicy("SeniorSupervisorOrAdmin", p => p.RequireRole("Admin", "Senior Supervisor"))
     // Story CRUD + dashboard: all CRM staff
-    options.AddPolicy("StaffOrAdmin",            p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor"));
+    .AddPolicy("StaffOrAdmin",            p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor"))
     // Story submission + management: all CRM roles
-    options.AddPolicy("ContributorOrAbove",      p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor", "Contributor"));
-});
+    .AddPolicy("ContributorOrAbove",      p => p.RequireRole("Admin", "Supervisor", "Senior Supervisor", "Contributor"));
 
 // ── Options (API-specific) ────────────────────────────────────────────────────
 builder.Services.Configure<ClientOptions>(
@@ -147,13 +145,40 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() { Title = "UpToU API", Version = "v1" });
+    // ── One Swagger document per logical tab ──────────────────────────────────
+    options.SwaggerDoc("auth",          new() { Title = "🔐 Auth",              Version = "v1", Description = "Authentication, registration, token refresh, social login" });
+    options.SwaggerDoc("stories",       new() { Title = "📖 Stories",           Version = "v1", Description = "Articles, interactive stories, ratings & recommendations" });
+    options.SwaggerDoc("categories",    new() { Title = "🗂 Categories",        Version = "v1", Description = "Category management, score types & badges" });
+    options.SwaggerDoc("users",         new() { Title = "👤 Users",             Version = "v1", Description = "User profiles, credits & reading progress" });
+    options.SwaggerDoc("social",        new() { Title = "💬 Social",            Version = "v1", Description = "Reactions, comments, votes, bookmarks & leaderboard" });
+    options.SwaggerDoc("notifications", new() { Title = "🔔 Notifications",     Version = "v1", Description = "User notification feed" });
+    options.SwaggerDoc("admin",         new() { Title = "⚙ Admin",             Version = "v1", Description = "Admin panel, reports & background jobs" });
+
+    // ── Route each controller to its document ─────────────────────────────────
+    options.DocInclusionPredicate((docName, api) =>
+    {
+        api.ActionDescriptor.RouteValues.TryGetValue("controller", out var ctrl);
+        ctrl ??= "";
+        return docName switch
+        {
+            "auth"          => ctrl == "Auth",
+            "stories"       => ctrl is "Story" or "InteractiveStory",
+            "categories"    => ctrl == "Category",
+            "users"         => ctrl is "User" or "Credit" or "Progress",
+            "social"        => ctrl is "Reaction" or "Comment" or "Leaderboard",
+            "notifications" => ctrl == "Notification",
+            "admin"         => ctrl is "Admin" or "Reports" or "Jobs",
+            _               => false,
+        };
+    });
+
+    // ── Security (shared across all docs) ─────────────────────────────────────
     options.AddSecurityDefinition("Bearer", new()
     {
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        Description = "Enter your JWT access token"
+        Description = "Paste your JWT access token (use the token bar at the top of the page)",
     });
     options.AddSecurityRequirement(new()
     {
@@ -202,14 +227,42 @@ recurringJobs.AddOrUpdate<PublishApprovedStoriesJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Minutely());  // check every minute for scheduled publishes
 
+recurringJobs.AddOrUpdate<AssignContributorTitleJob>(
+    "assign-contributor-title",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Daily(4));  // 04:00 UTC daily — crown the current Contributor Champion
+
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseStaticFiles();
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        // ── One tab per document ──────────────────────────────────────────────
+        c.SwaggerEndpoint("/swagger/auth/swagger.json",          "🔐 Auth");
+        c.SwaggerEndpoint("/swagger/stories/swagger.json",       "📖 Stories");
+        c.SwaggerEndpoint("/swagger/categories/swagger.json",    "🗂 Categories");
+        c.SwaggerEndpoint("/swagger/users/swagger.json",         "👤 Users");
+        c.SwaggerEndpoint("/swagger/social/swagger.json",        "💬 Social");
+        c.SwaggerEndpoint("/swagger/notifications/swagger.json", "🔔 Notifications");
+        c.SwaggerEndpoint("/swagger/admin/swagger.json",         "⚙ Admin");
+
+        // ── UX: always in execute mode, token persists across refreshes ───────
+        c.EnableTryItOutByDefault();
+        c.DisplayRequestDuration();
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+        c.DefaultModelExpandDepth(-1);
+        c.EnableFilter();
+        c.DocumentTitle = "UpToU API";
+
+        // ── Inject custom token bar + tab styles ──────────────────────────────
+        c.InjectStylesheet("/swagger-ui/custom.css");
+        c.InjectJavascript("/swagger-ui/custom.js");
+    });
 }
 
 app.UseHttpsRedirection();

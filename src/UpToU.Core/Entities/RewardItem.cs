@@ -19,6 +19,13 @@ public class RewardItem
     public string? PreviewUrl { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// When true this reward is awarded automatically and cannot be purchased from the shop
+    /// (e.g. the Contributor Champion exclusive title for the #1 on the contributor leaderboard).
+    /// </summary>
+    public bool IsExclusive { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<UserReward> UserRewards { get; set; } = new List<UserReward>();

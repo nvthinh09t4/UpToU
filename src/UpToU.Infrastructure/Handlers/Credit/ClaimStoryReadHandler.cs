@@ -32,7 +32,7 @@ public class ClaimStoryReadHandler : IRequestHandler<ClaimStoryReadCommand, Resu
         var story = await _db.Stories
             .AsNoTracking()
             .Where(s => s.Id == request.StoryId && !s.IsDeleted)
-            .Select(s => new { s.Id, s.CategoryId })
+            .Select(s => new { s.Id, s.CategoryId, s.AuthorId })
             .FirstOrDefaultAsync(ct);
 
         if (story is null)
@@ -45,20 +45,46 @@ public class ClaimStoryReadHandler : IRequestHandler<ClaimStoryReadCommand, Resu
         if (alreadyClaimed)
             return Result<CreditTransactionDto>.Conflict("Credits for this story already claimed.");
 
+        // Award reader credits
         var user = await _db.Users.FirstAsync(u => u.Id == userId, ct);
         user.CreditBalance += StoryReadReward;
 
         var transaction = new CreditTransaction
         {
-            UserId = userId,
-            Amount = StoryReadReward,
-            Type = "StoryRead",
+            UserId      = userId,
+            Amount      = StoryReadReward,
+            Type        = "StoryRead",
             ReferenceId = request.StoryId,
-            CategoryId = story.CategoryId,
+            CategoryId  = story.CategoryId,
             Description = "Finished reading a story",
         };
-
         _db.CreditTransactions.Add(transaction);
+
+        // Award a contributed point to the story's author (skip self-reads)
+        if (story.AuthorId is { } authorId && authorId != userId)
+        {
+            var alreadyAwarded = await _db.ContributedPointTransactions
+                .AnyAsync(t => t.StoryId == request.StoryId && t.ReaderId == userId, ct);
+
+            if (!alreadyAwarded)
+            {
+                _db.ContributedPointTransactions.Add(new ContributedPointTransaction
+                {
+                    AuthorId  = authorId,
+                    ReaderId  = userId,
+                    StoryId   = request.StoryId,
+                    Points    = 1,
+                    CreatedAt = DateTime.UtcNow,
+                });
+
+                // Increment the cached counter on the author's profile row
+                await _db.Users
+                    .Where(u => u.Id == authorId)
+                    .ExecuteUpdateAsync(
+                        s => s.SetProperty(u => u.ContributedPoints, u => u.ContributedPoints + 1), ct);
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return Result<CreditTransactionDto>.Success(new CreditTransactionDto(

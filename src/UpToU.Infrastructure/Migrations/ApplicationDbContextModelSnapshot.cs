@@ -17,7 +17,7 @@ namespace UpToU.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.24")
+                .HasAnnotation("ProductVersion", "8.0.25")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -190,16 +190,12 @@ namespace UpToU.Infrastructure.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
-                    b.Property<string>("DisplayName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("DisplayNameExpiresAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ContributedPoints")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -208,6 +204,13 @@ namespace UpToU.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("DisplayNameExpiresAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -381,6 +384,84 @@ namespace UpToU.Infrastructure.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BadgeImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LabelVi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ScoreThreshold")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CategoryId", "Tier")
+                        .IsUnique();
+
+                    b.ToTable("CategoryBadges");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryScoreType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("OrderToShow")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ScoreWeight")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("OrderToShow");
+
+                    b.HasIndex("CategoryId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("CategoryScoreTypes");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.Comment", b =>
                 {
                     b.Property<int>("Id")
@@ -456,6 +537,49 @@ namespace UpToU.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("CommentVotes");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.ContributedPointTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("Points")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("ReaderId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("StoryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("StoryId", "ReaderId")
+                        .IsUnique();
+
+                    b.ToTable("ContributedPointTransactions");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.CreditTransaction", b =>
@@ -663,6 +787,9 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsExclusive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -690,6 +817,14 @@ namespace UpToU.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssignedSupervisorId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AuthorId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("AuthorName")
                         .HasMaxLength(200)
@@ -726,6 +861,15 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<bool>("IsPublish")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("MaxQuestionLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxScoreTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxScoreValue")
+                        .HasColumnType("int");
+
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
@@ -736,9 +880,27 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<DateTime?>("PublishDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Slug")
                         .HasMaxLength(600)
                         .HasColumnType("nvarchar(600)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Draft");
 
                     b.Property<string>("StoryType")
                         .IsRequired()
@@ -746,6 +908,9 @@ namespace UpToU.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("Article");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -757,15 +922,23 @@ namespace UpToU.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignedSupervisorId");
+
+                    b.HasIndex("AuthorId");
+
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("IsDeleted");
 
                     b.HasIndex("IsPublish");
 
+                    b.HasIndex("MaxScoreTypeId");
+
                     b.HasIndex("Slug")
                         .IsUnique()
                         .HasFilter("[Slug] IS NOT NULL");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("StoryType");
 
@@ -867,6 +1040,14 @@ namespace UpToU.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("QuestionSubtitleVi")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("QuestionVi")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -894,15 +1075,36 @@ namespace UpToU.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BranchWeights")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ChoiceCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Color")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("FeedbackVi")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int?>("NextNodeId")
                         .HasColumnType("int");
 
                     b.Property<int>("PointsAwarded")
                         .HasColumnType("int");
+
+                    b.Property<string>("ScoreDeltas")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
@@ -915,6 +1117,10 @@ namespace UpToU.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("TextVi")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NextNodeId");
@@ -922,6 +1128,62 @@ namespace UpToU.Infrastructure.Migrations
                     b.HasIndex("StoryNodeId");
 
                     b.ToTable("StoryNodeAnswers");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.StoryTranslation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Excerpt")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Language");
+
+                    b.HasIndex("StoryId", "Language")
+                        .IsUnique();
+
+                    b.ToTable("StoryTranslations");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.StoryVote", b =>
@@ -1033,6 +1295,36 @@ namespace UpToU.Infrastructure.Migrations
                     b.ToTable("UserBans");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.UserCategoryBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AwardedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BadgeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BadgeId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "BadgeId")
+                        .IsUnique();
+
+                    b.ToTable("UserCategoryBadges");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.UserReward", b =>
                 {
                     b.Property<int>("Id")
@@ -1090,6 +1382,10 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<int>("ProgressId")
                         .HasColumnType("int");
 
+                    b.Property<string>("ScoreDeltas")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProgressId");
@@ -1113,6 +1409,10 @@ namespace UpToU.Infrastructure.Migrations
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("ScoreTotals")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("datetime2");
@@ -1244,6 +1544,28 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryScoreType", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.Category", "Category")
+                        .WithMany("ScoreTypes")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.Comment", b =>
                 {
                     b.HasOne("UpToU.Core.Entities.ApplicationUser", "Author")
@@ -1287,6 +1609,17 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("Comment");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.ContributedPointTransaction", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.Story", "Story")
+                        .WithMany()
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Story");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.CreditTransaction", b =>
@@ -1356,7 +1689,14 @@ namespace UpToU.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("UpToU.Core.Entities.CategoryScoreType", "MaxScoreType")
+                        .WithMany()
+                        .HasForeignKey("MaxScoreTypeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Category");
+
+                    b.Navigation("MaxScoreType");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.StoryDetail", b =>
@@ -1398,6 +1738,17 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("StoryNode");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.StoryTranslation", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.Story", "Story")
+                        .WithMany("Translations")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Story");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.StoryVote", b =>
                 {
                     b.HasOne("UpToU.Core.Entities.Story", "Story")
@@ -1431,6 +1782,25 @@ namespace UpToU.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Category");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.UserCategoryBadge", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.CategoryBadge", "Badge")
+                        .WithMany("UserBadges")
+                        .HasForeignKey("BadgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UpToU.Core.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Badge");
 
                     b.Navigation("User");
                 });
@@ -1517,7 +1887,14 @@ namespace UpToU.Infrastructure.Migrations
                 {
                     b.Navigation("Children");
 
+                    b.Navigation("ScoreTypes");
+
                     b.Navigation("Stories");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.Navigation("UserBadges");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.Comment", b =>
@@ -1541,6 +1918,8 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("StoryDetails");
 
                     b.Navigation("StoryVotes");
+
+                    b.Navigation("Translations");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.StoryDetail", b =>

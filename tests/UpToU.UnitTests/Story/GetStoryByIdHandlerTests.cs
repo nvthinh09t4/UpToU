@@ -1,14 +1,27 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.Entities;
 using UpToU.Infrastructure.Data;
 using UpToU.Infrastructure.Handlers.Story;
+using UpToU.UnitTests.Infrastructure;
 
 namespace UpToU.UnitTests.Story;
 
 public class GetStoryByIdHandlerTests
 {
+    private readonly Mock<IHttpContextAccessor> _httpContextMock;
+
+    public GetStoryByIdHandlerTests()
+    {
+        _httpContextMock = new Mock<IHttpContextAccessor>();
+        _httpContextMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
+    }
+
+    // InMemory DB is fine for tests that only reach the "not found" / "not published" branch,
+    // because those code paths do NOT call ExecuteUpdateAsync.
     private static ApplicationDbContext CreateInMemoryDb()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -22,7 +35,7 @@ public class GetStoryByIdHandlerTests
     {
         // Arrange
         using var db = CreateInMemoryDb();
-        var handler = new GetStoryByIdHandler(db);
+        var handler = new GetStoryByIdHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoryByIdQuery(999), CancellationToken.None);
@@ -55,7 +68,7 @@ public class GetStoryByIdHandlerTests
         db.Stories.Add(story);
         await db.SaveChangesAsync();
 
-        var handler = new GetStoryByIdHandler(db);
+        var handler = new GetStoryByIdHandler(db, _httpContextMock.Object);
 
         // Act
         var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
@@ -68,97 +81,116 @@ public class GetStoryByIdHandlerTests
     [Fact]
     public async Task Handle_WhenPublished_ReturnsStoryWithLatestPublishedRevision()
     {
-        // Arrange
-        using var db = CreateInMemoryDb();
-        var category = new Category { Title = "Tech", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
-        db.Categories.Add(category);
-        var story = new Core.Entities.Story
+        // SQLite in-memory is required here because the handler calls ExecuteUpdateAsync
+        // to increment the view count, which is not supported by the EF Core InMemory provider.
+        var (db, conn) = SqliteTestDbContextFactory.Create();
+        await using (conn)
+        await using (db)
         {
-            Title = "Published Story",
-            CategoryId = category.Id,
-            IsPublish = true,
-            IsDeleted = false,
-            CreatedOn = DateTime.UtcNow,
-            StoryDetails = new List<StoryDetail>
+            var category = new Category { Title = "Tech", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
+            db.Categories.Add(category);
+            await db.SaveChangesAsync();
+
+            var story = new Core.Entities.Story
             {
-                new() { Revision = 1, IsPublish = true,  Content = "Rev1 content", SavePath = "/path", WordCount = 50,  ScoreWeight = 1m, CreatedOn = DateTime.UtcNow },
-                new() { Revision = 2, IsPublish = true,  Content = "Rev2 content", SavePath = "/path", WordCount = 80,  ScoreWeight = 1m, CreatedOn = DateTime.UtcNow },
-                new() { Revision = 3, IsPublish = false, Content = "Rev3 draft",   SavePath = "/path", WordCount = 120, ScoreWeight = 1m, CreatedOn = DateTime.UtcNow }
-            }
-        };
-        db.Stories.Add(story);
-        await db.SaveChangesAsync();
+                Title = "Published Story",
+                CategoryId = category.Id,
+                IsPublish = true,
+                IsDeleted = false,
+                CreatedOn = DateTime.UtcNow,
+                StoryDetails = new List<StoryDetail>
+                {
+                    new() { Revision = 1, IsPublish = true,  Content = "Rev1 content", SavePath = "/path", WordCount = 50,  ScoreWeight = 1m, CreatedOn = DateTime.UtcNow },
+                    new() { Revision = 2, IsPublish = true,  Content = "Rev2 content", SavePath = "/path", WordCount = 80,  ScoreWeight = 1m, CreatedOn = DateTime.UtcNow },
+                    new() { Revision = 3, IsPublish = false, Content = "Rev3 draft",   SavePath = "/path", WordCount = 120, ScoreWeight = 1m, CreatedOn = DateTime.UtcNow }
+                }
+            };
+            db.Stories.Add(story);
+            await db.SaveChangesAsync();
 
-        var handler = new GetStoryByIdHandler(db);
+            var handler = new GetStoryByIdHandler(db, _httpContextMock.Object);
 
-        // Act
-        var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
+            // Act
+            var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
 
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.Title.Should().Be("Published Story");
-        result.Value.LatestDetail.Should().NotBeNull();
-        result.Value.LatestDetail!.Revision.Should().Be(2);
-        result.Value.LatestDetail.Content.Should().Be("Rev2 content");
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value!.Title.Should().Be("Published Story");
+            result.Value.LatestDetail.Should().NotBeNull();
+            result.Value.LatestDetail!.Revision.Should().Be(2);
+            result.Value.LatestDetail.Content.Should().Be("Rev2 content");
+        }
     }
 
     [Fact]
     public async Task Handle_WhenNoPublishedRevisionExists_ReturnsNullLatestDetail()
     {
-        // Arrange
-        using var db = CreateInMemoryDb();
-        var category = new Category { Title = "Tech", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
-        db.Categories.Add(category);
-        var story = new Core.Entities.Story
+        // SQLite in-memory — required because handler calls ExecuteUpdateAsync on success path
+        var (db, conn) = SqliteTestDbContextFactory.Create();
+        await using (conn)
+        await using (db)
         {
-            Title = "Published Story No Published Revision",
-            CategoryId = category.Id,
-            IsPublish = true,
-            IsDeleted = false,
-            CreatedOn = DateTime.UtcNow,
-            StoryDetails = new List<StoryDetail>
+            var category = new Category { Title = "Tech", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
+            db.Categories.Add(category);
+            await db.SaveChangesAsync();
+
+            var story = new Core.Entities.Story
             {
-                new() { Revision = 1, IsPublish = false, Content = "Draft only", SavePath = "/path", WordCount = 10, ScoreWeight = 1m, CreatedOn = DateTime.UtcNow }
-            }
-        };
-        db.Stories.Add(story);
-        await db.SaveChangesAsync();
+                Title = "Published Story No Published Revision",
+                CategoryId = category.Id,
+                IsPublish = true,
+                IsDeleted = false,
+                CreatedOn = DateTime.UtcNow,
+                StoryDetails = new List<StoryDetail>
+                {
+                    new() { Revision = 1, IsPublish = false, Content = "Draft only", SavePath = "/path", WordCount = 10, ScoreWeight = 1m, CreatedOn = DateTime.UtcNow }
+                }
+            };
+            db.Stories.Add(story);
+            await db.SaveChangesAsync();
 
-        var handler = new GetStoryByIdHandler(db);
+            var handler = new GetStoryByIdHandler(db, _httpContextMock.Object);
 
-        // Act
-        var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
+            // Act
+            var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
 
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.LatestDetail.Should().BeNull();
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value!.LatestDetail.Should().BeNull();
+        }
     }
 
     [Fact]
     public async Task Handle_WhenPublished_ReturnsCategoryTitle()
     {
-        // Arrange
-        using var db = CreateInMemoryDb();
-        var category = new Category { Title = "Science", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
-        db.Categories.Add(category);
-        var story = new Core.Entities.Story
+        // SQLite in-memory — required because handler calls ExecuteUpdateAsync on success path
+        var (db, conn) = SqliteTestDbContextFactory.Create();
+        await using (conn)
+        await using (db)
         {
-            Title = "Science Story",
-            CategoryId = category.Id,
-            IsPublish = true,
-            IsDeleted = false,
-            CreatedOn = DateTime.UtcNow
-        };
-        db.Stories.Add(story);
-        await db.SaveChangesAsync();
+            var category = new Category { Title = "Science", IsActive = true, ScoreWeight = 1m, OrderToShow = 1 };
+            db.Categories.Add(category);
+            await db.SaveChangesAsync();
 
-        var handler = new GetStoryByIdHandler(db);
+            var story = new Core.Entities.Story
+            {
+                Title = "Science Story",
+                CategoryId = category.Id,
+                IsPublish = true,
+                IsDeleted = false,
+                CreatedOn = DateTime.UtcNow
+            };
+            db.Stories.Add(story);
+            await db.SaveChangesAsync();
 
-        // Act
-        var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
+            var handler = new GetStoryByIdHandler(db, _httpContextMock.Object);
 
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.CategoryTitle.Should().Be("Science");
+            // Act
+            var result = await handler.Handle(new GetStoryByIdQuery(story.Id), CancellationToken.None);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value!.CategoryTitle.Should().Be("Science");
+        }
     }
 }

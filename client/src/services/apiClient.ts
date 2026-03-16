@@ -53,7 +53,11 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const { data } = await apiClient.post<AuthResponse>('/auth/refresh');
+      // Mark the refresh call with _skipRetry so the interceptor treats its own
+      // 401 as a hard failure rather than entering failedQueue — which would
+      // deadlock because only this handler can drain the queue.
+      const refreshCfg = { _skipRetry: true } as InternalAxiosRequestConfig & { _skipRetry?: boolean };
+      const { data } = await apiClient.post<AuthResponse>('/auth/refresh', undefined, refreshCfg);
       useAuthStore.getState().setAuth(data.accessToken, data.user);
       processQueue(null, data.accessToken);
       original.headers.Authorization = `Bearer ${data.accessToken}`;

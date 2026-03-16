@@ -31,9 +31,13 @@ accounts
 .env
 .env.*
 !.env.example
+!.env.production.example
 appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
+
+# ── Docker / deployment ────────────────────────────────────────────────────────
+nginx/certs/
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store

@@ -1,24 +1,48 @@
 using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using UpToU.Infrastructure.Data;
 
 #nullable disable
 
 namespace UpToU.Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260311000005_AddStoryWorkflowFields")]
     public partial class AddStoryWorkflowFields : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(name: "AuthorId",       table: "Stories", type: "nvarchar(450)", nullable: true);
-            migrationBuilder.AddColumn<string>(name: "Status",         table: "Stories", type: "nvarchar(20)",  nullable: false, defaultValue: "Draft");
-            migrationBuilder.AddColumn<DateTime>(name: "SubmittedAt",  table: "Stories", type: "datetime2",     nullable: true);
-            migrationBuilder.AddColumn<string>(name: "ReviewedBy",     table: "Stories", type: "nvarchar(450)", nullable: true);
-            migrationBuilder.AddColumn<DateTime>(name: "ReviewedAt",   table: "Stories", type: "datetime2",     nullable: true);
-            migrationBuilder.AddColumn<string>(name: "RejectionReason", table: "Stories", type: "nvarchar(2000)", nullable: true);
-            migrationBuilder.CreateIndex(name: "IX_Stories_Status",   table: "Stories", column: "Status");
-            migrationBuilder.CreateIndex(name: "IX_Stories_AuthorId", table: "Stories", column: "AuthorId");
+            // All AddColumn and CreateIndex calls are conditional so this migration
+            // is safe to apply against databases that already have these columns
+            // (e.g. from a previous version of AddContributedPoints).
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'AuthorId')
+                    ALTER TABLE [Stories] ADD [AuthorId] nvarchar(450) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'Status')
+                    ALTER TABLE [Stories] ADD [Status] nvarchar(20) NOT NULL DEFAULT 'Draft';
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'SubmittedAt')
+                    ALTER TABLE [Stories] ADD [SubmittedAt] datetime2 NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'ReviewedBy')
+                    ALTER TABLE [Stories] ADD [ReviewedBy] nvarchar(450) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'ReviewedAt')
+                    ALTER TABLE [Stories] ADD [ReviewedAt] datetime2 NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'RejectionReason')
+                    ALTER TABLE [Stories] ADD [RejectionReason] nvarchar(2000) NULL;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'IX_Stories_Status')
+                    CREATE INDEX [IX_Stories_Status] ON [Stories] ([Status]);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[Stories]') AND name = N'IX_Stories_AuthorId')
+                    CREATE INDEX [IX_Stories_AuthorId] ON [Stories] ([AuthorId]);");
         }
 
         /// <inheritdoc />

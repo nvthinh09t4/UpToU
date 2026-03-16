@@ -17,19 +17,20 @@ export function CategoryNav() {
   if (isLoading || categories.length === 0) return null;
 
   return (
-    <nav className="border-b bg-background sticky top-[65px] z-40">
+    <nav className="sticky top-[57px] z-40 border-b bg-background/90 backdrop-blur-md">
       <div
         ref={scrollRef}
-        className="flex gap-2 overflow-x-auto px-4 py-3 sm:px-6 scrollbar-hide"
+        className="flex gap-1.5 overflow-x-auto px-4 py-2.5 sm:px-6"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <Link
           to="/"
-          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap
-            ${activeId === null
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-            }`}
+          className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+            activeId === null
+              ? 'text-white shadow-sm'
+              : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+          style={activeId === null ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } : undefined}
         >
           All
         </Link>
@@ -37,11 +38,12 @@ export function CategoryNav() {
           <Link
             key={cat.id}
             to={`/categories/${cat.id}`}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap
-              ${activeId === cat.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              }`}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+              activeId === cat.id
+                ? 'text-white shadow-sm'
+                : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+            style={activeId === cat.id ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } : undefined}
           >
             {cat.title}
           </Link>

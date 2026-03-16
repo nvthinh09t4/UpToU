@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Trophy } from 'lucide-react';
+import { Trophy, BookOpen } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/button';
 import { NotificationBell } from '../notifications/NotificationBell';
@@ -12,19 +12,31 @@ export function AppHeader() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-xl font-bold tracking-tight">UpToU</Link>
+    <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        {/* Left — logo + nav */}
+        <div className="flex items-center gap-5">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+              <BookOpen className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-lg font-extrabold tracking-tight"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              UpToU
+            </span>
+          </Link>
           <Link
             to="/leaderboard"
-            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
           >
-            <Trophy className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('nav.leaderboard')}</span>
+            <Trophy className="h-3.5 w-3.5" />
+            {t('nav.leaderboard')}
           </Link>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Right — auth */}
+        <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
               <CreditBadge />
@@ -32,9 +44,19 @@ export function AppHeader() {
               <UserMenu />
             </>
           ) : (
-            <Link to="/login">
-              <Button size="sm">{t('nav.signIn')}</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/login">
+                <Button size="sm" variant="ghost" className="text-sm font-medium">
+                  {t('nav.signIn')}
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="sm" className="rounded-full px-4 text-sm font-semibold text-white"
+                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none' }}>
+                  Get started
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>

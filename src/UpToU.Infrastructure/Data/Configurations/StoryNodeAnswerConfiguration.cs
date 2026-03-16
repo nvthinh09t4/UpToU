@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UpToU.Core.Entities;
 
@@ -11,7 +13,37 @@ public class StoryNodeAnswerConfiguration : IEntityTypeConfiguration<StoryNodeAn
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.Text).HasMaxLength(500).IsRequired();
+        builder.Property(a => a.TextVi).HasMaxLength(500);
         builder.Property(a => a.Color).HasMaxLength(50);
+
+        builder.Property(a => a.ScoreDeltas)
+               .HasConversion(
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                   v => string.IsNullOrWhiteSpace(v) ? new Dictionary<string, int>()
+                        : JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, int>(),
+                   new ValueComparer<Dictionary<string, int>>(
+                       (a, b) => a != null && b != null && a.Count == b.Count && !a.Except(b).Any(),
+                       v => v.Aggregate(0, (h, kv) => HashCode.Combine(h, kv.Key.GetHashCode(), kv.Value.GetHashCode())),
+                       v => new Dictionary<string, int>(v)))
+               .HasColumnType("nvarchar(max)")
+               .IsRequired();
+
+        builder.Property(a => a.BranchWeights)
+               .HasConversion(
+                   v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                   v => string.IsNullOrWhiteSpace(v) ? new Dictionary<string, int>()
+                        : JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, int>(),
+                   new ValueComparer<Dictionary<string, int>>(
+                       (a, b) => a != null && b != null && a.Count == b.Count && !a.Except(b).Any(),
+                       v => v.Aggregate(0, (h, kv) => HashCode.Combine(h, kv.Key.GetHashCode(), kv.Value.GetHashCode())),
+                       v => new Dictionary<string, int>(v)))
+               .HasColumnType("nvarchar(max)")
+               .IsRequired();
+
+        builder.Property(a => a.ChoiceCount).HasDefaultValue(0);
+
+        builder.Property(a => a.Feedback).HasMaxLength(1000);
+        builder.Property(a => a.FeedbackVi).HasMaxLength(1000);
 
         // The parent node that owns this answer
         builder.HasOne(a => a.StoryNode)

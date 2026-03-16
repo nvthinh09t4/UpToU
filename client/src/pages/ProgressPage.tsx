@@ -7,6 +7,7 @@ import {
 import { BookOpen, Flame, Sparkles, TrendingUp } from 'lucide-react';
 import { AppHeader } from '../components/layout/AppHeader';
 import { progressApi } from '../services/progressApi';
+import { timeAgo } from '../utils/dateUtils';
 import type { InProgressStory, SuggestedStory, CategoryCredit, DailyCredit } from '../types/progress';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -15,14 +16,6 @@ const BAR_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#eab308','#22c55e',
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const d = Math.floor(diff / 86_400_000);
-  if (d === 0) return 'today';
-  if (d === 1) return 'yesterday';
-  return d + 'd ago';
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -36,16 +29,20 @@ function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string })
   );
 }
 
+function isInProgressStory(story: SuggestedStory | InProgressStory): story is InProgressStory {
+  return 'visitedNodes' in story;
+}
+
 function StoryCard({ story, showProgress }: { story: SuggestedStory | InProgressStory; showProgress?: boolean }) {
-  const isInProgress = 'visitedNodes' in story;
-  const id = isInProgress ? (story as InProgressStory).storyId : (story as SuggestedStory).id;
-  const pct = isInProgress && (story as InProgressStory).totalNodes > 0
-    ? Math.round(((story as InProgressStory).visitedNodes / (story as InProgressStory).totalNodes) * 100)
+  const inProgress = isInProgressStory(story);
+  const id = inProgress ? story.storyId : story.id;
+  const pct = inProgress && story.totalNodes > 0
+    ? Math.round((story.visitedNodes / story.totalNodes) * 100)
     : 0;
 
   return (
     <Link to={'/stories/' + id}
-      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-md">
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-violet-300/50 hover:shadow-md">
       {story.coverImageUrl ? (
         <div className="aspect-[16/9] overflow-hidden">
           <img src={story.coverImageUrl} alt={story.title}
@@ -61,23 +58,23 @@ function StoryCard({ story, showProgress }: { story: SuggestedStory | InProgress
           {story.categoryTitle}
         </span>
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{story.title}</p>
-        {showProgress && isInProgress && (
+        {showProgress && isInProgressStory(story) && (
           <div className="mt-2">
             <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>{(story as InProgressStory).visitedNodes}/{(story as InProgressStory).totalNodes} nodes</span>
+              <span>{story.visitedNodes}/{story.totalNodes} nodes</span>
               <span className="font-semibold text-primary">{pct}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary transition-all" style={{ width: pct + '%' }} />
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              {(story as InProgressStory).pointsEarned} pts · updated {timeAgo((story as InProgressStory).updatedAt)}
+              {story.pointsEarned} pts · updated {timeAgo(story.updatedAt)}
             </p>
           </div>
         )}
-        {!isInProgress && (
+        {!isInProgressStory(story) && (
           <p className="mt-auto pt-1 text-[10px] text-muted-foreground">
-            {(story as SuggestedStory).viewCount.toLocaleString()} views
+            {story.viewCount.toLocaleString()} views
           </p>
         )}
       </div>
@@ -87,7 +84,7 @@ function StoryCard({ story, showProgress }: { story: SuggestedStory | InProgress
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
       {message}
     </div>
   );
@@ -105,14 +102,19 @@ export function ProgressPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-extrabold">My Progress</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b" style={{ background: 'linear-gradient(160deg,#080c14,#0f172a)' }}>
+        <div className="pointer-events-none absolute -top-16 right-0 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">My Progress</h1>
+          <p className="mt-2 text-sm text-white/50">
             Your learning journey, stats, and story recommendations.
           </p>
         </div>
+      </div>
+
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
 
         {isLoading || !data ? (
           <div className="space-y-6">
@@ -131,7 +133,7 @@ export function ProgressPage() {
                 { label: 'Categories',        value: data.categoryCredits.length,   icon: '🗂️' },
               ].map(({ label, value, icon }) => (
                 <div key={label}
-                  className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card p-4 text-center">
+                  className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-card p-4 text-center">
                   <span className="text-2xl">{icon}</span>
                   <p className="text-2xl font-extrabold">{value}</p>
                   <p className="text-[11px] text-muted-foreground">{label}</p>
@@ -142,7 +144,7 @@ export function ProgressPage() {
             {/* ── Charts row ──────────────────────────────────────── */}
             <div className="grid gap-6 md:grid-cols-2">
               {/* Credits by Category */}
-              <div className="rounded-xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <SectionTitle icon={<TrendingUp className="h-4 w-4" />} title="Credits by Category" />
                 {data.categoryCredits.length === 0 ? (
                   <EmptyState message="No category credits yet. Start reading stories!" />
@@ -168,7 +170,7 @@ export function ProgressPage() {
               </div>
 
               {/* Daily Credits (last 30 days) */}
-              <div className="rounded-xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <SectionTitle icon={<Sparkles className="h-4 w-4" />} title="Points Earned (Last 30 Days)" />
                 {data.dailyCredits.length === 0 ? (
                   <EmptyState message="No activity yet this month." />

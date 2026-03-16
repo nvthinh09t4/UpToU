@@ -9,6 +9,7 @@ namespace UpToU.API.Controllers;
 
 public record ApproveRequest(DateTime? PublishDate);
 public record RejectRequest(string Reason);
+public record RateStoryRequest(int Rating, string? Comment);
 
 [ApiController]
 [Route("api/v1")]
@@ -61,6 +62,31 @@ public class StoryController : ControllerBase
         CancellationToken ct)
     {
         var result = await _mediator.Send(command with { StoryId = id }, ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpGet("stories/{id:int}/rating")]
+    public async Task<ActionResult<StoryRatingDto>> GetStoryRating(int id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetStoryRatingQuery(id), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpPost("stories/{id:int}/rate")]
+    [Authorize]
+    public async Task<ActionResult<StoryRatingDto>> RateStory(
+        int id, [FromBody] RateStoryRequest body, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new RateStoryCommand(id, body.Rating, body.Comment), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
+
+    [HttpGet("stories/recommended")]
+    [Authorize]
+    public async Task<ActionResult<List<RecommendedStoryDto>>> GetRecommended(
+        [FromQuery] int count = 6, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetRecommendedStoriesQuery(count), ct);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
 

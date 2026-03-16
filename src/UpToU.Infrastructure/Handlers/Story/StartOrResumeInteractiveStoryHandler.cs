@@ -1,12 +1,13 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.DTOs.Story;
 using UpToU.Core.Entities;
 using UpToU.Core.Models;
 using UpToU.Infrastructure.Data;
+using UpToU.Infrastructure.Extensions;
 
 namespace UpToU.Infrastructure.Handlers.Story;
 
@@ -14,103 +15,104 @@ public class StartOrResumeInteractiveStoryHandler : IRequestHandler<StartOrResum
 {
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<StartOrResumeInteractiveStoryHandler> _logger;
 
-    public StartOrResumeInteractiveStoryHandler(ApplicationDbContext db, IHttpContextAccessor httpContextAccessor)
+    public StartOrResumeInteractiveStoryHandler(
+        ApplicationDbContext db,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<StartOrResumeInteractiveStoryHandler> logger)
     {
         _db = db;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     public async Task<Result<InteractiveStoryStateDto>> Handle(StartOrResumeInteractiveStoryCommand request, CancellationToken ct)
     {
-        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = _httpContextAccessor.GetUserId();
         if (string.IsNullOrEmpty(userId))
             return Result<InteractiveStoryStateDto>.Unauthorized("Authentication required.");
 
-        // Verify the story exists and is interactive
         var story = await _db.Stories.AsNoTracking()
             .Where(s => s.Id == request.StoryId)
             .Select(s => new { s.Id, s.StoryType, s.IsPublish, s.CategoryId })
             .FirstOrDefaultAsync(ct);
 
-        if (story is null) return Result<InteractiveStoryStateDto>.NotFound("Story not found.");
-        if (story.StoryType != "Interactive")
+        if (story is null)
+            return Result<InteractiveStoryStateDto>.NotFound("Story not found.");
+        if (story.StoryType != StoryTypes.Interactive)
             return Result<InteractiveStoryStateDto>.Failure("This story is not interactive.");
         if (!story.IsPublish)
             return Result<InteractiveStoryStateDto>.Failure("This story is not published.");
 
-        // Check for existing progress
         var existing = await _db.UserStoryProgresses
             .Where(p => p.UserId == userId && p.StoryId == request.StoryId)
             .FirstOrDefaultAsync(ct);
 
         if (existing is not null)
-            return Result<InteractiveStoryStateDto>.Success(await BuildState(existing, ct));
+        {
+            _logger.LogDebug("Resuming interactive story. {UserId} {StoryId} {ProgressId}", userId, request.StoryId, existing.Id);
+            return Result<InteractiveStoryStateDto>.Success(
+                await InteractiveStoryHelpers.BuildStateAsync(_db, existing, story.CategoryId, null, ct));
+        }
 
-        // Find active StoryDetail: IsPublish=true, EffectiveDate<=UTC_NOW or null, newest first
-        var now = DateTime.UtcNow;
+        var detailId = await FindActiveDetailIdAsync(request.StoryId, ct);
+        if (detailId is null)
+            return Result<InteractiveStoryStateDto>.NotFound("No published story revision is currently active.");
+
+        var startNodeId = await FindStartNodeIdAsync(detailId.Value, ct);
+        if (startNodeId is null)
+            return Result<InteractiveStoryStateDto>.NotFound("This story has no start node configured.");
+
+        var progress = await CreateProgressAsync(userId, request.StoryId, detailId.Value, startNodeId.Value, ct);
+
+        _logger.LogInformation(
+            "Interactive story started. {UserId} {StoryId} {ProgressId} {StartNodeId}",
+            userId, request.StoryId, progress.Id, startNodeId.Value);
+
+        return Result<InteractiveStoryStateDto>.Success(
+            await InteractiveStoryHelpers.BuildStateAsync(_db, progress, story.CategoryId, null, ct));
+    }
+
+    private async Task<int?> FindActiveDetailIdAsync(int storyId, CancellationToken ct)
+    {
+        var now    = DateTime.UtcNow;
         var detail = await _db.StoryDetails.AsNoTracking()
-            .Where(d => d.StoryId == request.StoryId && d.IsPublish
+            .Where(d => d.StoryId == storyId && d.IsPublish
                 && (d.EffectiveDate == null || d.EffectiveDate <= now))
             .OrderByDescending(d => d.EffectiveDate)
             .ThenByDescending(d => d.Revision)
             .Select(d => new { d.Id })
             .FirstOrDefaultAsync(ct);
 
-        if (detail is null)
-            return Result<InteractiveStoryStateDto>.NotFound("No published story revision is currently active.");
+        return detail?.Id;
+    }
 
-        // Find the start node for this detail
-        var startNode = await _db.StoryNodes.AsNoTracking()
-            .Where(n => n.StoryDetailId == detail.Id && n.IsStart)
+    private async Task<int?> FindStartNodeIdAsync(int detailId, CancellationToken ct)
+    {
+        var node = await _db.StoryNodes.AsNoTracking()
+            .Where(n => n.StoryDetailId == detailId && n.IsStart)
             .Select(n => new { n.Id })
             .FirstOrDefaultAsync(ct);
 
-        if (startNode is null)
-            return Result<InteractiveStoryStateDto>.NotFound("This story has no start node configured.");
+        return node?.Id;
+    }
 
-        // Create progress record
+    private async Task<UserStoryProgress> CreateProgressAsync(
+        string userId, int storyId, int detailId, int startNodeId, CancellationToken ct)
+    {
         var progress = new UserStoryProgress
         {
             UserId        = userId,
-            StoryId       = request.StoryId,
-            StoryDetailId = detail.Id,
-            CurrentNodeId = startNode.Id,
+            StoryId       = storyId,
+            StoryDetailId = detailId,
+            CurrentNodeId = startNodeId,
             IsCompleted   = false,
             StartedAt     = DateTime.UtcNow,
             UpdatedAt     = DateTime.UtcNow,
         };
         _db.UserStoryProgresses.Add(progress);
         await _db.SaveChangesAsync(ct);
-
-        return Result<InteractiveStoryStateDto>.Success(await BuildState(progress, ct));
-    }
-
-    private async Task<InteractiveStoryStateDto> BuildState(UserStoryProgress progress, CancellationToken ct)
-    {
-        StoryNodeDto? currentNodeDto = null;
-        if (progress.CurrentNodeId.HasValue)
-        {
-            currentNodeDto = await _db.StoryNodes.AsNoTracking()
-                .Where(n => n.Id == progress.CurrentNodeId.Value)
-                .Select(n => new StoryNodeDto(
-                    n.Id, n.StoryDetailId, n.Question, n.QuestionSubtitle, n.IsStart,
-                    n.BackgroundImageUrl, n.BackgroundColor, n.VideoUrl, n.AnimationType, n.SortOrder,
-                    n.Answers.OrderBy(a => a.SortOrder).ThenBy(a => a.Id)
-                        .Select(a => new StoryNodeAnswerDto(a.Id, a.Text, a.PointsAwarded, a.NextNodeId, a.Color, a.SortOrder))
-                        .ToList()))
-                .FirstOrDefaultAsync(ct);
-        }
-
-        var visitedCount = await _db.UserStoryAnswers.CountAsync(a => a.ProgressId == progress.Id, ct);
-
-        return new InteractiveStoryStateDto(
-            progress.Id,
-            progress.StoryId,
-            progress.StoryDetailId,
-            progress.IsCompleted,
-            progress.TotalPointsEarned,
-            currentNodeDto,
-            visitedCount);
+        return progress;
     }
 }

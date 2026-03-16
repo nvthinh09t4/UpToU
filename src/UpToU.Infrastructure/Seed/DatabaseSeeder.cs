@@ -14,8 +14,35 @@ public static class DatabaseSeeder
     {
         await SeedRolesAndAdminAsync(userManager, roleManager);
         var categories = await SeedCategoriesAsync(db);
+        await SeedCategoryScoreTypesAsync(db, categories);
         await SeedTagsAndStoriesAsync(db, categories);
         await SeedInteractiveStoriesAsync(db, categories);
+        await InvestmentCrisisStorySeeder.SeedAsync(db, categories);
+        await SeedExclusiveRewardsAsync(db);
+    }
+
+    private static async Task SeedExclusiveRewardsAsync(ApplicationDbContext db)
+    {
+        const string championValue = "✍️ Contributor Champion";
+
+        // Idempotent — only seed once
+        if (await db.RewardItems.AnyAsync(r => r.IsExclusive && r.Value == championValue))
+            return;
+
+        db.RewardItems.Add(new RewardItem
+        {
+            Name        = "Contributor Champion",
+            Description = "Awarded daily to the author whose stories have been finished by the most unique readers. "
+                        + "This title cannot be purchased — it belongs to the community's most impactful storyteller.",
+            Category    = "Title",
+            CreditCost  = 0,
+            Value       = championValue,
+            IsActive    = true,
+            IsExclusive = true,
+            CreatedAt   = DateTime.UtcNow,
+        });
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAndAdminAsync(
@@ -327,6 +354,143 @@ public static class DatabaseSeeder
         await db.SaveChangesAsync();
 
         return await db.Categories.IgnoreQueryFilters().ToListAsync();
+    }
+
+    private static async Task SeedCategoryScoreTypesAsync(ApplicationDbContext db, List<Category> categories)
+    {
+        // Map score types by category title — each entry is (name, label, weight, order)
+        // This method is upsert-safe: runs on every startup and adds/updates/removes score types as needed.
+        var scoreTypeMap = new Dictionary<string, List<(string Name, string Label, decimal Weight, int Order)>>
+        {
+            ["Investment"] =
+            [
+                ("capital",    "Capital",    0.35m, 1),
+                ("experience", "Experience", 0.30m, 2),
+                ("mental",     "Mental",     0.20m, 3),
+                ("health",     "Health",     0.15m, 4),
+            ],
+            ["Budgeting"] =
+            [
+                ("discipline", "Discipline", 0.40m, 1),
+                ("knowledge",  "Knowledge",  0.35m, 2),
+                ("habits",     "Habits",     0.25m, 3),
+            ],
+            ["Tax & Accounting"] =
+            [
+                ("knowledge",   "Knowledge",   0.50m, 1),
+                ("compliance",  "Compliance",  0.30m, 2),
+                ("efficiency",  "Efficiency",  0.20m, 3),
+            ],
+            ["Health & Wellness"] =
+            [
+                ("physical",  "Physical",  0.35m, 1),
+                ("mental",    "Mental",    0.35m, 2),
+                ("nutrition", "Nutrition", 0.30m, 3),
+            ],
+            ["Career"] =
+            [
+                ("skills",       "Skills",       0.35m, 1),
+                ("network",      "Network",      0.25m, 2),
+                ("mindset",      "Mindset",      0.25m, 3),
+                ("experience",   "Experience",   0.15m, 4),
+            ],
+            ["Relationships"] =
+            [
+                ("empathy",       "Empathy",       0.40m, 1),
+                ("communication", "Communication", 0.35m, 2),
+                ("trust",         "Trust",         0.25m, 3),
+            ],
+            ["Productivity"] =
+            [
+                ("focus",      "Focus",      0.40m, 1),
+                ("systems",    "Systems",    0.35m, 2),
+                ("energy",     "Energy",     0.25m, 3),
+            ],
+            ["Mindset"] =
+            [
+                ("resilience", "Resilience", 0.40m, 1),
+                ("growth",     "Growth",     0.35m, 2),
+                ("clarity",    "Clarity",    0.25m, 3),
+            ],
+            ["Programming"] =
+            [
+                ("technical",  "Technical",  0.45m, 1),
+                ("logic",      "Logic",      0.30m, 2),
+                ("creativity", "Creativity", 0.25m, 3),
+            ],
+            ["AI & Machine Learning"] =
+            [
+                ("technical",    "Technical",    0.40m, 1),
+                ("data_insight", "Data Insight", 0.35m, 2),
+                ("ethics",       "Ethics",       0.25m, 3),
+            ],
+            ["Fantasy"] =
+            [
+                ("imagination", "Imagination", 0.50m, 1),
+                ("lore",        "Lore",        0.30m, 2),
+                ("emotion",     "Emotion",     0.20m, 3),
+            ],
+            ["Sci-Fi"] =
+            [
+                ("logic",       "Logic",       0.40m, 1),
+                ("imagination", "Imagination", 0.35m, 2),
+                ("ethics",      "Ethics",      0.25m, 3),
+            ],
+            ["Thriller"] =
+            [
+                ("tension",   "Tension",   0.45m, 1),
+                ("logic",     "Logic",     0.30m, 2),
+                ("emotion",   "Emotion",   0.25m, 3),
+            ],
+            ["Real Life"] =
+            [
+                ("research",      "Research",       0.35m, 1),
+                ("patience",      "Patience",       0.30m, 2),
+                ("budget_sense",  "Budget Sense",   0.35m, 3),
+            ],
+        };
+
+        var existing = await db.CategoryScoreTypes
+            .ToDictionaryAsync(st => (st.CategoryId, st.Name));
+
+        foreach (var category in categories)
+        {
+            if (!scoreTypeMap.TryGetValue(category.Title, out var expected))
+                continue;
+
+            var expectedNames = expected.Select(e => e.Name).ToHashSet();
+
+            // Remove score types no longer in the map
+            var toRemove = existing.Values
+                .Where(st => st.CategoryId == category.Id && !expectedNames.Contains(st.Name))
+                .ToList();
+            if (toRemove.Count > 0)
+                db.CategoryScoreTypes.RemoveRange(toRemove);
+
+            // Insert or update
+            foreach (var (name, label, weight, order) in expected)
+            {
+                if (existing.TryGetValue((category.Id, name), out var existingSt))
+                {
+                    existingSt.Label       = label;
+                    existingSt.ScoreWeight = weight;
+                    existingSt.OrderToShow = order;
+                }
+                else
+                {
+                    db.CategoryScoreTypes.Add(new CategoryScoreType
+                    {
+                        CategoryId  = category.Id,
+                        Name        = name,
+                        Label       = label,
+                        ScoreWeight = weight,
+                        OrderToShow = order,
+                    });
+                }
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedTagsAndStoriesAsync(ApplicationDbContext db, List<Category> categories)
@@ -661,8 +825,26 @@ public static class DatabaseSeeder
 
     private static async Task SeedInteractiveStoriesAsync(ApplicationDbContext db, List<Category> categories)
     {
-        if (await db.Stories.IgnoreQueryFilters().AnyAsync(s => s.StoryType == "Interactive"))
-            return;
+        // Idempotent: skip if stories already exist with ScoreDeltas (new structure).
+        // Re-seed from scratch if the old structure (empty ScoreDeltas) is detected.
+        var wmStory = await db.Stories.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.Slug == "washing-machine-dilemma");
+        if (wmStory is not null)
+        {
+            var firstAnswer = await db.StoryNodeAnswers
+                .Include(a => a.StoryNode).ThenInclude(n => n.StoryDetail)
+                .Where(a => a.StoryNode.StoryDetail.StoryId == wmStory.Id)
+                .FirstOrDefaultAsync();
+
+            if (firstAnswer?.ScoreDeltas.Count > 0 && firstAnswer.TextVi != null) return; // already migrated with Vi content
+
+            // Delete old stories so we can re-seed with the new ScoreDeltas structure
+            var old = await db.Stories.IgnoreQueryFilters()
+                .Where(s => s.Slug == "washing-machine-dilemma" || s.Slug == "game-or-learn-lazy-day")
+                .ToListAsync();
+            db.Stories.RemoveRange(old);
+            await db.SaveChangesAsync();
+        }
 
         var now = DateTime.UtcNow;
         const string seededBy = "system";
@@ -674,86 +856,103 @@ public static class DatabaseSeeder
         var wm1 = new StoryNode
         {
             Question = "Your old washing machine just gave up. Laundry is piling up. What's your first move?",
+            QuestionVi = "Máy giặt cũ của bạn vừa hỏng. Đống quần áo chưa giặt ngày càng chất cao. Bạn sẽ làm gì đầu tiên?",
             QuestionSubtitle = "Every decision starts somewhere.",
+            QuestionSubtitleVi = "Mọi quyết định đều bắt đầu từ đâu đó.",
             IsStart = true, BackgroundColor = "#1e3a5f", AnimationType = "fade", SortOrder = 0,
         };
         var wm2 = new StoryNode
         {
             Question = "You're deep in a review rabbit hole. Top-load vs front-load. RPM counts. Energy ratings. What do you focus on?",
+            QuestionVi = "Bạn đang chìm đắm trong vô số đánh giá. Cửa trên hay cửa trước. Số vòng quay. Tiết kiệm điện. Bạn tập trung vào điều gì?",
             QuestionSubtitle = "Beware the rabbit hole...",
+            QuestionSubtitleVi = "Coi chừng bị cuốn vào vòng xoáy nghiên cứu...",
             BackgroundColor = "#0d2137", AnimationType = "slide-left", SortOrder = 1,
         };
         var wm3 = new StoryNode
         {
             Question = "The salesperson steers you toward a $1,200 front-loader. 'It's our bestseller — on sale today only.' What do you do?",
+            QuestionVi = "Nhân viên bán hàng đang dẫn bạn đến chiếc máy giặt cửa trước giá $1.200. 'Đây là sản phẩm bán chạy nhất — hôm nay giảm giá đặc biệt.' Bạn làm gì?",
             QuestionSubtitle = "Sales pressure is real.",
+            QuestionSubtitleVi = "Áp lực từ nhân viên bán hàng là có thật.",
             BackgroundColor = "#4a1a1a", AnimationType = "zoom", SortOrder = 2,
         };
         var wm4 = new StoryNode
         {
             Question = "Your neighbor loves their Samsung. Your cousin had nothing but trouble with theirs. Mixed signals!",
+            QuestionVi = "Hàng xóm của bạn rất thích máy Samsung của họ. Còn người anh họ thì chỉ gặp rắc rối với chiếc đó. Tín hiệu hỗn độn!",
             QuestionSubtitle = "Word of mouth cuts both ways.",
+            QuestionSubtitleVi = "Lời truyền miệng có thể đi theo cả hai chiều.",
             BackgroundColor = "#1a3a1a", AnimationType = "fade", SortOrder = 3,
         };
         var wm5 = new StoryNode
         {
             Question = "You found a reliable mid-range model at $650 — 4.2 stars with 2,000+ reviews. What now?",
+            QuestionVi = "Bạn tìm được một mẫu tầm trung đáng tin cậy giá $650 — 4,2 sao với hơn 2.000 đánh giá. Tiếp theo?",
             QuestionSubtitle = "Good enough is sometimes perfect.",
+            QuestionSubtitleVi = "Đủ tốt đôi khi chính là hoàn hảo.",
             BackgroundColor = "#2a2a4a", AnimationType = "slide-left", SortOrder = 4,
         };
         var wm6 = new StoryNode
         {
             Question = "The Energy Star model costs $300 more but saves ~$85/year on electricity. Pays off in 3.5 years.",
+            QuestionVi = "Mẫu tiết kiệm điện đắt hơn $300 nhưng tiết kiệm khoảng $85/năm tiền điện. Hoàn vốn sau 3,5 năm.",
             QuestionSubtitle = "Short-term cost vs long-term saving.",
+            QuestionSubtitleVi = "Chi phí ngắn hạn so với tiết kiệm dài hạn.",
             BackgroundColor = "#1a4a2a", AnimationType = "fade", SortOrder = 5,
         };
         var wm7 = new StoryNode
         {
             Question = "A trusted brand with a 5-year warranty and excellent service record. It's $800.",
+            QuestionVi = "Một thương hiệu uy tín với bảo hành 5 năm và dịch vụ hậu mãi xuất sắc. Giá $800.",
             QuestionSubtitle = "Sometimes paying more is paying less.",
+            QuestionSubtitleVi = "Đôi khi trả thêm chính là tiết kiệm.",
             BackgroundColor = "#2a1a4a", AnimationType = "zoom", SortOrder = 6,
         };
 
+        static Dictionary<string, int> WmD(int research, int patience, int budget) =>
+            new() { ["research"] = research, ["patience"] = patience, ["budget_sense"] = budget };
+
         wm1.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Research online first — read reviews and compare specs", PointsAwarded = 10, Color = "#2563eb", SortOrder = 0, NextNode = wm2 },
-            new() { Text = "Head straight to the appliance store", PointsAwarded = 5, Color = "#7c3aed", SortOrder = 1, NextNode = wm3 },
-            new() { Text = "Ask friends and family for recommendations", PointsAwarded = 8, Color = "#059669", SortOrder = 2, NextNode = wm4 },
+            new() { Text = "Research online first — read reviews and compare specs", TextVi = "Tìm hiểu trực tuyến trước — đọc đánh giá và so sánh thông số", PointsAwarded = 15, ScoreDeltas = WmD(10, 5, 0), Color = "#2563eb", SortOrder = 0, NextNode = wm2, Feedback = "Smart start — data beats gut feelings when buying appliances.", FeedbackVi = "Khởi đầu thông minh — dữ liệu luôn đáng tin hơn cảm tính khi mua đồ gia dụng." },
+            new() { Text = "Head straight to the appliance store", TextVi = "Đến thẳng cửa hàng điện máy", PointsAwarded = 5, ScoreDeltas = WmD(0, 0, 0), Color = "#7c3aed", SortOrder = 1, NextNode = wm3, Feedback = "Walking in cold puts you at a disadvantage with salespeople.", FeedbackVi = "Vào mà không chuẩn bị trước sẽ khiến bạn dễ bị nhân viên bán hàng dẫn dắt." },
+            new() { Text = "Ask friends and family for recommendations", TextVi = "Hỏi ý kiến bạn bè và gia đình", PointsAwarded = 8, ScoreDeltas = WmD(5, 5, 0), Color = "#059669", SortOrder = 2, NextNode = wm4, Feedback = "Social proof is useful — but always cross-check with reviews.", FeedbackVi = "Kinh nghiệm của người quen hữu ích — nhưng hãy kiểm chứng thêm qua các đánh giá khác." },
         };
         wm2.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Price vs. reliability — I want the best value", PointsAwarded = 15, Color = "#2563eb", SortOrder = 0, NextNode = wm5 },
-            new() { Text = "Energy Star ratings — I want lower bills long-term", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = wm6 },
-            new() { Text = "Brand reputation — I'll stick with a trusted name", PointsAwarded = 10, Color = "#7c3aed", SortOrder = 2, NextNode = wm7 },
-            new() { Text = "Honestly overwhelmed — close the laptop and take a walk", PointsAwarded = 2, Color = "#6b7280", SortOrder = 3, NextNodeId = null },
+            new() { Text = "Price vs. reliability — I want the best value", TextVi = "Giá cả so với độ bền — tôi muốn sản phẩm tốt nhất trong tầm tiền", PointsAwarded = 15, ScoreDeltas = WmD(10, 5, 15), Color = "#2563eb", SortOrder = 0, NextNode = wm5, Feedback = "Value-focused thinking prevents both over- and under-spending.", FeedbackVi = "Tư duy tập trung vào giá trị giúp bạn không tiêu quá nhiều lẫn quá ít." },
+            new() { Text = "Energy Star ratings — I want lower bills long-term", TextVi = "Chứng nhận tiết kiệm điện — tôi muốn giảm hóa đơn về lâu dài", PointsAwarded = 12, ScoreDeltas = WmD(10, 10, 10), Color = "#059669", SortOrder = 1, NextNode = wm6, Feedback = "Long-term thinking — that $300 premium often pays back in 3–4 years.", FeedbackVi = "Tư duy dài hạn — khoản chênh lệch $300 đó thường được hoàn vốn trong 3–4 năm." },
+            new() { Text = "Brand reputation — I'll stick with a trusted name", TextVi = "Uy tín thương hiệu — tôi chọn tên tuổi đáng tin cậy", PointsAwarded = 10, ScoreDeltas = WmD(5, 10, 5), Color = "#7c3aed", SortOrder = 2, NextNode = wm7, Feedback = "Brand trust reduces research risk but may mean paying a premium.", FeedbackVi = "Tin tưởng thương hiệu giảm rủi ro nghiên cứu nhưng thường phải trả giá cao hơn." },
+            new() { Text = "Honestly overwhelmed — close the laptop and take a walk", TextVi = "Thực ra tôi đang choáng ngợp — đóng laptop và đi dạo cho thoáng đầu", PointsAwarded = 0, ScoreDeltas = WmD(-5, -10, 0), Color = "#6b7280", SortOrder = 3, NextNodeId = null, Feedback = "Decision fatigue is real — but the pile of laundry isn't going anywhere.", FeedbackVi = "Mệt mỏi vì phải ra quyết định là có thật — nhưng đống quần áo bẩn sẽ không tự biến mất." },
         };
         wm3.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Politely ask to see mid-range options instead", PointsAwarded = 12, Color = "#2563eb", SortOrder = 0, NextNode = wm5 },
-            new() { Text = "Ask for the full spec sheet and compare quietly", PointsAwarded = 15, Color = "#059669", SortOrder = 1, NextNode = wm6 },
-            new() { Text = "The salesperson is convincing… add it to cart on impulse", PointsAwarded = 5, Color = "#dc2626", SortOrder = 2, NextNodeId = null },
+            new() { Text = "Politely ask to see mid-range options instead", TextVi = "Lịch sự đề nghị xem các mẫu tầm trung hơn", PointsAwarded = 15, ScoreDeltas = WmD(5, 12, 15), Color = "#2563eb", SortOrder = 0, NextNode = wm5, Feedback = "Redirecting a pushy salesperson takes confidence — well done.", FeedbackVi = "Chủ động điều hướng nhân viên bán hàng cần sự tự tin — tốt lắm." },
+            new() { Text = "Ask for the full spec sheet and compare quietly", TextVi = "Yêu cầu bảng thông số đầy đủ và tự so sánh", PointsAwarded = 20, ScoreDeltas = WmD(15, 10, 10), Color = "#059669", SortOrder = 1, NextNode = wm6, Feedback = "Getting data in-store gives you the best of both worlds.", FeedbackVi = "Thu thập dữ liệu tại cửa hàng giúp bạn có cả hai lợi thế." },
+            new() { Text = "The salesperson is convincing… add it to cart on impulse", TextVi = "Nhân viên quá thuyết phục... bốc đồng bỏ vào giỏ hàng", PointsAwarded = 0, ScoreDeltas = WmD(-5, -10, -15), Color = "#dc2626", SortOrder = 2, NextNodeId = null, Feedback = "'Today only' is almost never true. Urgency is a sales tactic.", FeedbackVi = "'Chỉ hôm nay' gần như chẳng bao giờ là thật. Tạo cảm giác khẩn cấp là chiêu bán hàng cổ điển." },
         };
         wm4.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Cross-reference both experiences with professional reviews", PointsAwarded = 10, Color = "#2563eb", SortOrder = 0, NextNode = wm2 },
-            new() { Text = "Trust the neighbor — their laundry always looks great", PointsAwarded = 8, Color = "#059669", SortOrder = 1, NextNode = wm7 },
-            new() { Text = "Pick a totally different brand and avoid the debate", PointsAwarded = 8, Color = "#7c3aed", SortOrder = 2, NextNode = wm5 },
+            new() { Text = "Cross-reference both experiences with professional reviews", TextVi = "Đối chiếu cả hai kinh nghiệm với các đánh giá chuyên nghiệp", PointsAwarded = 15, ScoreDeltas = WmD(15, 10, 5), Color = "#2563eb", SortOrder = 0, NextNode = wm2, Feedback = "Combining anecdotes with data is the most reliable approach.", FeedbackVi = "Kết hợp câu chuyện cá nhân với dữ liệu là cách đáng tin cậy nhất." },
+            new() { Text = "Trust the neighbor — their laundry always looks great", TextVi = "Tin người hàng xóm — quần áo họ lúc nào cũng sạch đẹp", PointsAwarded = 8, ScoreDeltas = WmD(5, 5, 5), Color = "#059669", SortOrder = 1, NextNode = wm7, Feedback = "Word of mouth matters, but sample size of one is risky.", FeedbackVi = "Lời khuyên từ người quen có giá trị, nhưng mẫu chỉ có một người là quá ít." },
+            new() { Text = "Pick a totally different brand and avoid the debate", TextVi = "Chọn thương hiệu hoàn toàn khác để tránh tranh luận", PointsAwarded = 8, ScoreDeltas = WmD(5, 5, 8), Color = "#7c3aed", SortOrder = 2, NextNode = wm5, Feedback = "Avoiding social friction with a neutral choice — pragmatic.", FeedbackVi = "Chọn trung lập để tránh bất hòa xã hội — thực dụng đấy." },
         };
         wm5.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Check three more sites — find it $80 cheaper with free installation", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "Add to cart immediately — this is the one", PointsAwarded = 15, Color = "#2563eb", SortOrder = 1, NextNodeId = null },
-            new() { Text = "Wait two months for the holiday sale", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 2, NextNodeId = null },
+            new() { Text = "Check three more sites — find it $80 cheaper with free installation", TextVi = "Kiểm tra thêm ba trang web — tìm được giá rẻ hơn $80 kèm lắp đặt miễn phí", PointsAwarded = 30, ScoreDeltas = WmD(20, 15, 20), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "That 15-minute price comparison just paid $80 plus saved on installation.", FeedbackVi = "Mười lăm phút so sánh giá vừa tiết kiệm được $80 cộng chi phí lắp đặt." },
+            new() { Text = "Add to cart immediately — this is the one", TextVi = "Thêm vào giỏ ngay — đây là cái tôi cần", PointsAwarded = 15, ScoreDeltas = WmD(5, 0, 10), Color = "#2563eb", SortOrder = 1, NextNodeId = null, Feedback = "Quick decisiveness — just be sure you checked at least one competitor.", FeedbackVi = "Quyết đoán nhanh — nhưng hãy chắc chắn bạn đã kiểm tra ít nhất một nơi khác." },
+            new() { Text = "Wait two months for the holiday sale", TextVi = "Đợi hai tháng đến đợt sale dịp lễ", PointsAwarded = 10, ScoreDeltas = WmD(5, 20, 15), Color = "#f59e0b", SortOrder = 2, NextNodeId = null, Feedback = "Patience pays — but factor in laundromat costs during the wait.", FeedbackVi = "Kiên nhẫn có lợi — nhưng hãy tính thêm chi phí giặt ủi trong lúc chờ đợi." },
         };
         wm6.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Worth it — I plan to use this machine for 10+ years", PointsAwarded = 25, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "The upfront cost is too much — look for something cheaper", PointsAwarded = 5, Color = "#f59e0b", SortOrder = 1, NextNode = wm5 },
+            new() { Text = "Worth it — I plan to use this machine for 10+ years", TextVi = "Xứng đáng — tôi dự định dùng máy này hơn 10 năm", PointsAwarded = 25, ScoreDeltas = WmD(10, 10, 20), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "Long-horizon thinking: total cost of ownership beats sticker price.", FeedbackVi = "Tư duy dài hạn: tổng chi phí sở hữu quan trọng hơn giá niêm yết." },
+            new() { Text = "The upfront cost is too much — look for something cheaper", TextVi = "Chi phí ban đầu quá cao — tìm thứ gì rẻ hơn", PointsAwarded = 5, ScoreDeltas = WmD(5, 5, 5), Color = "#f59e0b", SortOrder = 1, NextNode = wm5, Feedback = "Valid — cash flow matters. Just make sure the cheaper model is reliable.", FeedbackVi = "Hợp lý — dòng tiền quan trọng. Chỉ cần đảm bảo mẫu rẻ hơn đáng tin cậy." },
         };
         wm7.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Buy it — peace of mind has a price and it's worth it", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "Negotiate a discount or extended warranty before buying", PointsAwarded = 22, Color = "#2563eb", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Buy it — peace of mind has a price and it's worth it", TextVi = "Mua ngay — sự an tâm có giá của nó và đáng đồng tiền", PointsAwarded = 20, ScoreDeltas = WmD(10, 10, 15), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "A solid warranty often covers the price difference in one service call.", FeedbackVi = "Bảo hành tốt thường bù đắp chênh lệch giá chỉ trong một lần sửa chữa." },
+            new() { Text = "Negotiate a discount or extended warranty before buying", TextVi = "Thương lượng giảm giá hoặc gia hạn bảo hành trước khi mua", PointsAwarded = 25, ScoreDeltas = WmD(10, 10, 25), Color = "#2563eb", SortOrder = 1, NextNodeId = null, Feedback = "Negotiating in-store is underrated — retailers have more flexibility than you think.", FeedbackVi = "Thương lượng tại cửa hàng thường bị đánh giá thấp — người bán có nhiều linh hoạt hơn bạn nghĩ." },
         };
 
         var story1Detail = new StoryDetail
@@ -786,92 +985,106 @@ public static class DatabaseSeeder
         var ld1 = new StoryNode
         {
             Question = "It's Saturday. No plans. The couch is calling. What does your gut say?",
+            QuestionVi = "Hôm nay thứ Bảy. Không có kế hoạch gì. Chiếc ghế sofa đang gọi tên bạn. Trực giác bạn nói gì?",
             QuestionSubtitle = "There's no wrong answer. Or is there?",
+            QuestionSubtitleVi = "Không có câu trả lời sai. Hay là có?",
             IsStart = true, BackgroundColor = "#1a1a2e", AnimationType = "fade", SortOrder = 0,
         };
         var ld2 = new StoryNode
         {
             Question = "Gaming it is! What kind of gaming mood are you in today?",
+            QuestionVi = "Chơi game thôi! Hôm nay bạn đang trong tâm trạng chơi game kiểu nào?",
             BackgroundColor = "#0d1b2a", AnimationType = "slide-left", SortOrder = 1,
         };
         var ld3 = new StoryNode
         {
             Question = "You chose learning. But what kind of learning actually sounds appealing right now?",
+            QuestionVi = "Bạn đã chọn học. Nhưng kiểu học nào thực sự hấp dẫn bạn lúc này?",
             BackgroundColor = "#1a2e1a", AnimationType = "zoom", SortOrder = 2,
         };
         var ld4 = new StoryNode
         {
             Question = "You flip a coin. It lands on LEARN. Your immediate gut reaction?",
+            QuestionVi = "Bạn tung đồng xu. Nó ra HỌC. Phản ứng trực giác ngay lập tức của bạn?",
             QuestionSubtitle = "Your gut knows what you really want.",
+            QuestionSubtitleVi = "Trực giác của bạn biết bạn thật sự muốn gì.",
             BackgroundColor = "#2e1a2e", AnimationType = "fade", SortOrder = 3,
         };
         var ld5 = new StoryNode
         {
             Question = "Three hours of competitive matches later. How's it going?",
+            QuestionVi = "Sau ba tiếng đấu rank liên tục. Mọi chuyện thế nào rồi?",
             BackgroundColor = "#0d0d1a", AnimationType = "slide-left", SortOrder = 4,
         };
         var ld6 = new StoryNode
         {
             Question = "You found an indie game with gorgeous art and a calm vibe. Three hours pass like nothing.",
+            QuestionVi = "Bạn tìm được một game indie với đồ họa tuyệt đẹp và không khí thư thái. Ba tiếng trôi qua như chớp.",
             BackgroundColor = "#1a1a0d", AnimationType = "fade", SortOrder = 5,
         };
         var ld7 = new StoryNode
         {
             Question = "You've been learning for 90 minutes. It's harder than expected. How are you doing?",
+            QuestionVi = "Bạn đã học được 90 phút. Khó hơn dự kiến. Bạn đang thế nào?",
             BackgroundColor = "#0d2e1a", AnimationType = "zoom", SortOrder = 6,
         };
         var ld8 = new StoryNode
         {
             Question = "You fell into a Wikipedia spiral: Roman aqueducts → medieval siege engines → modern water infrastructure.",
+            QuestionVi = "Bạn rơi vào vòng xoáy Wikipedia: Cống dẫn nước La Mã → vũ khí công thành thời Trung cổ → hạ tầng nước hiện đại.",
             QuestionSubtitle = "One hour in. Still going strong.",
+            QuestionSubtitleVi = "Một tiếng rồi. Vẫn đang hăng hái.",
             BackgroundColor = "#2e1a0d", AnimationType = "slide-left", SortOrder = 7,
         };
 
+        static Dictionary<string, int> LdD(int resilience, int growth, int clarity) =>
+            new() { ["resilience"] = resilience, ["growth"] = growth, ["clarity"] = clarity };
+
         ld1.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Games. I just want to relax and have fun", PointsAwarded = 8, Color = "#7c3aed", SortOrder = 0, NextNode = ld2 },
-            new() { Text = "Maybe I should do something productive...", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = ld3 },
-            new() { Text = "I genuinely can't decide between gaming and learning", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 2, NextNode = ld4 },
+            new() { Text = "Games. I just want to relax and have fun", TextVi = "Chơi game. Tôi chỉ muốn thư giãn và vui vẻ", PointsAwarded = 5, ScoreDeltas = LdD(5, 0, 5), Color = "#7c3aed", SortOrder = 0, NextNode = ld2, Feedback = "Rest is valid — the key is whether it's intentional or avoidance.", FeedbackVi = "Nghỉ ngơi là hợp lý — điều quan trọng là bạn chủ động chọn hay đang né tránh điều gì đó." },
+            new() { Text = "Maybe I should do something productive...", TextVi = "Có lẽ mình nên làm gì đó có ích hơn...", PointsAwarded = 12, ScoreDeltas = LdD(5, 12, 8), Color = "#059669", SortOrder = 1, NextNode = ld3, Feedback = "Choosing discomfort over comfort — that's growth in action.", FeedbackVi = "Chọn sự khó chịu thay vì thoải mái — đó chính là sự phát triển đang diễn ra." },
+            new() { Text = "I genuinely can't decide between gaming and learning", TextVi = "Thật sự tôi không thể chọn giữa chơi game và học", PointsAwarded = 8, ScoreDeltas = LdD(5, 5, 5), Color = "#f59e0b", SortOrder = 2, NextNode = ld4, Feedback = "Indecision is honest — at least you're aware of the tension.", FeedbackVi = "Không quyết được cũng là trung thực — ít nhất bạn đang nhận ra sự mâu thuẫn bên trong." },
         };
         ld2.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Something competitive — ranked matches, pure adrenaline", PointsAwarded = 8, Color = "#dc2626", SortOrder = 0, NextNode = ld5 },
-            new() { Text = "Something relaxing — chill indie or casual puzzle game", PointsAwarded = 12, Color = "#059669", SortOrder = 1, NextNode = ld6 },
-            new() { Text = "Couch co-op with a friend or partner", PointsAwarded = 15, Color = "#2563eb", SortOrder = 2, NextNodeId = null },
+            new() { Text = "Something competitive — ranked matches, pure adrenaline", TextVi = "Gì đó cạnh tranh — leo rank, adrenaline thuần túy", PointsAwarded = 8, ScoreDeltas = LdD(8, 3, 3), Color = "#dc2626", SortOrder = 0, NextNode = ld5, Feedback = "Competitive play builds resilience — especially when you lose.", FeedbackVi = "Chơi cạnh tranh xây dựng sự kiên cường — đặc biệt là khi bạn thua." },
+            new() { Text = "Something relaxing — chill indie or casual puzzle game", TextVi = "Gì đó thư giãn — indie chill hoặc game giải đố nhẹ nhàng", PointsAwarded = 10, ScoreDeltas = LdD(5, 5, 10), Color = "#059669", SortOrder = 1, NextNode = ld6, Feedback = "Deliberate rest is a skill. You chose calm over stimulation.", FeedbackVi = "Nghỉ ngơi có chủ đích là một kỹ năng. Bạn đã chọn sự bình yên thay vì kích thích." },
+            new() { Text = "Couch co-op with a friend or partner", TextVi = "Chơi đồng đội trên ghế sofa cùng bạn bè hoặc người yêu", PointsAwarded = 15, ScoreDeltas = LdD(8, 8, 12), Color = "#2563eb", SortOrder = 2, NextNodeId = null, Feedback = "Social connection + play — hard to beat for overall wellbeing.", FeedbackVi = "Kết nối xã hội cộng với niềm vui chơi game — khó có gì bằng cho sức khỏe tinh thần." },
         };
         ld3.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "A practical skill — coding, cooking, woodworking, or design", PointsAwarded = 20, Color = "#059669", SortOrder = 0, NextNode = ld7 },
-            new() { Text = "Something purely fascinating — history, science, philosophy", PointsAwarded = 18, Color = "#2563eb", SortOrder = 1, NextNode = ld8 },
-            new() { Text = "A new language — open Duolingo for the first time in months", PointsAwarded = 15, Color = "#f59e0b", SortOrder = 2, NextNodeId = null },
+            new() { Text = "A practical skill — coding, cooking, woodworking, or design", TextVi = "Một kỹ năng thực tế — lập trình, nấu ăn, làm mộc, hoặc thiết kế", PointsAwarded = 20, ScoreDeltas = LdD(8, 20, 10), Color = "#059669", SortOrder = 0, NextNode = ld7, Feedback = "Practical learning compounds — each skill opens doors to new ones.", FeedbackVi = "Học kỹ năng thực tế có tính tích lũy — mỗi kỹ năng mở ra những kỹ năng mới." },
+            new() { Text = "Something purely fascinating — history, science, philosophy", TextVi = "Gì đó hoàn toàn hấp dẫn — lịch sử, khoa học, triết học", PointsAwarded = 18, ScoreDeltas = LdD(5, 15, 18), Color = "#2563eb", SortOrder = 1, NextNode = ld8, Feedback = "Curiosity-driven learning is the most sustainable kind.", FeedbackVi = "Học vì tò mò là hình thức bền vững nhất." },
+            new() { Text = "A new language — open Duolingo for the first time in months", TextVi = "Một ngoại ngữ mới — mở Duolingo lần đầu tiên sau nhiều tháng", PointsAwarded = 15, ScoreDeltas = LdD(10, 12, 8), Color = "#f59e0b", SortOrder = 2, NextNodeId = null, Feedback = "Starting (again) counts. Consistency over perfection.", FeedbackVi = "Bắt đầu (lại) vẫn tính. Kiên trì quan trọng hơn hoàn hảo." },
         };
         ld4.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Relieved! Today's the day I learn something new", PointsAwarded = 18, Color = "#059669", SortOrder = 0, NextNode = ld3 },
-            new() { Text = "Disappointed — I clearly wanted to game all along", PointsAwarded = 8, Color = "#dc2626", SortOrder = 1, NextNode = ld2 },
-            new() { Text = "Ignore the coin: 1 hour learning, then gaming as reward", PointsAwarded = 22, Color = "#7c3aed", SortOrder = 2, NextNodeId = null },
+            new() { Text = "Relieved! Today's the day I learn something new", TextVi = "Nhẹ nhõm! Hôm nay là ngày tôi học điều gì đó mới", PointsAwarded = 18, ScoreDeltas = LdD(8, 18, 15), Color = "#059669", SortOrder = 0, NextNode = ld3, Feedback = "Your gut already knew what you needed. You just needed permission.", FeedbackVi = "Trực giác của bạn đã biết bạn cần gì. Bạn chỉ cần được phép." },
+            new() { Text = "Disappointed — I clearly wanted to game all along", TextVi = "Thất vọng — rõ ràng tôi muốn chơi game suốt", PointsAwarded = 10, ScoreDeltas = LdD(5, 5, 12), Color = "#dc2626", SortOrder = 1, NextNode = ld2, Feedback = "Self-awareness is clarity. Knowing what you want is valuable data.", FeedbackVi = "Tự nhận thức là sự rõ ràng. Biết mình muốn gì là thông tin quý giá." },
+            new() { Text = "Ignore the coin: 1 hour learning, then gaming as reward", TextVi = "Bỏ qua đồng xu: 1 tiếng học, sau đó chơi game như phần thưởng", PointsAwarded = 22, ScoreDeltas = LdD(15, 15, 15), Color = "#7c3aed", SortOrder = 2, NextNodeId = null, Feedback = "Best of both worlds — structured balance over binary thinking.", FeedbackVi = "Được cả hai — cân bằng có cấu trúc thay vì tư duy đối lập." },
         };
         ld5.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "On a winning streak! Ranked up twice. Totally worth it", PointsAwarded = 15, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "Lost 6 in a row. Frustrated, but somehow still here...", PointsAwarded = 5, Color = "#dc2626", SortOrder = 1, NextNodeId = null },
-            new() { Text = "Took a break and accidentally started a documentary", PointsAwarded = 18, Color = "#2563eb", SortOrder = 2, NextNode = ld8 },
+            new() { Text = "On a winning streak! Ranked up twice. Totally worth it", TextVi = "Đang thắng liên tiếp! Leo rank được hai bậc. Hoàn toàn xứng đáng", PointsAwarded = 15, ScoreDeltas = LdD(15, 8, 8), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "Wins feel great. The question is: what did you learn from the losses?", FeedbackVi = "Thắng rất tuyệt. Câu hỏi là: bạn học được gì từ những lần thua?" },
+            new() { Text = "Lost 6 in a row. Frustrated, but somehow still here...", TextVi = "Thua 6 ván liên tiếp. Bực bội, nhưng bằng cách nào đó vẫn ở đây...", PointsAwarded = 8, ScoreDeltas = LdD(20, 5, 3), Color = "#dc2626", SortOrder = 1, NextNodeId = null, Feedback = "Staying through frustration is resilience. That's genuinely hard.", FeedbackVi = "Tiếp tục dù bực bội chính là sự kiên cường. Điều đó thực sự khó." },
+            new() { Text = "Took a break and accidentally started a documentary", TextVi = "Nghỉ giải lao rồi tình cờ xem phim tài liệu", PointsAwarded = 18, ScoreDeltas = LdD(10, 15, 15), Color = "#2563eb", SortOrder = 2, NextNode = ld8, Feedback = "The best learning often sneaks up on you. Follow your curiosity.", FeedbackVi = "Việc học tốt nhất thường xuất hiện bất ngờ. Hãy theo đuổi sự tò mò." },
         };
         ld6.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Finished the whole game. Deeply satisfied day", PointsAwarded = 18, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "Started seriously thinking about making my own indie game", PointsAwarded = 22, Color = "#7c3aed", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Finished the whole game. Deeply satisfied day", TextVi = "Chơi xong cả game. Một ngày vô cùng thỏa mãn", PointsAwarded = 18, ScoreDeltas = LdD(10, 8, 18), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "Completion satisfaction is real. You honored your choice fully.", FeedbackVi = "Sự thỏa mãn khi hoàn thành là có thật. Bạn đã tôn trọng lựa chọn của mình trọn vẹn." },
+            new() { Text = "Started seriously thinking about making my own indie game", TextVi = "Bắt đầu nghiêm túc nghĩ đến việc tự làm game indie", PointsAwarded = 22, ScoreDeltas = LdD(10, 22, 18), Color = "#7c3aed", SortOrder = 1, NextNodeId = null, Feedback = "Play inspired creation. That's how a lot of great things start.", FeedbackVi = "Niềm vui chơi đã truyền cảm hứng sáng tạo. Đó là cách nhiều thứ vĩ đại bắt đầu." },
         };
         ld7.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Built something small that actually works. Best feeling ever!", PointsAwarded = 25, Color = "#059669", SortOrder = 0, NextNodeId = null },
-            new() { Text = "Closed the tutorial after 30 min. It'll take more than one day", PointsAwarded = 10, Color = "#f59e0b", SortOrder = 1, NextNodeId = null },
-            new() { Text = "Made real progress — reward myself with gaming time", PointsAwarded = 20, Color = "#2563eb", SortOrder = 2, NextNode = ld2 },
+            new() { Text = "Built something small that actually works. Best feeling ever!", TextVi = "Tạo ra được thứ gì nhỏ nhưng thật sự hoạt động. Cảm giác tuyệt nhất từ trước đến nay!", PointsAwarded = 28, ScoreDeltas = LdD(15, 28, 15), Color = "#059669", SortOrder = 0, NextNodeId = null, Feedback = "Making something real is the fastest shortcut to competence and confidence.", FeedbackVi = "Tạo ra thứ gì đó thật là con đường tắt nhanh nhất đến năng lực và sự tự tin." },
+            new() { Text = "Closed the tutorial after 30 min. It'll take more than one day", TextVi = "Đóng bài hướng dẫn sau 30 phút. Sẽ cần nhiều hơn một ngày", PointsAwarded = 10, ScoreDeltas = LdD(10, 10, 12), Color = "#f59e0b", SortOrder = 1, NextNodeId = null, Feedback = "Accurate self-assessment beats false confidence. You'll be back.", FeedbackVi = "Tự đánh giá chính xác tốt hơn sự tự tin giả tạo. Bạn sẽ quay lại." },
+            new() { Text = "Made real progress — reward myself with gaming time", TextVi = "Đã tiến bộ thật sự — tự thưởng cho mình bằng thời gian chơi game", PointsAwarded = 22, ScoreDeltas = LdD(12, 20, 15), Color = "#2563eb", SortOrder = 2, NextNode = ld2, Feedback = "Structured reward systems actually work. You earned this.", FeedbackVi = "Hệ thống phần thưởng có cấu trúc thực sự hiệu quả. Bạn xứng đáng được hưởng." },
         };
         ld8.Answers = new List<StoryNodeAnswer>
         {
-            new() { Text = "Four hours in — now I know more about Roman aqueducts than most archaeologists", PointsAwarded = 22, Color = "#2563eb", SortOrder = 0, NextNodeId = null },
-            new() { Text = "It sparked a creative project I immediately started sketching out", PointsAwarded = 25, Color = "#7c3aed", SortOrder = 1, NextNodeId = null },
+            new() { Text = "Four hours in — now I know more about Roman aqueducts than most archaeologists", TextVi = "Bốn tiếng sau — giờ tôi biết về cống dẫn nước La Mã nhiều hơn hầu hết các nhà khảo cổ", PointsAwarded = 22, ScoreDeltas = LdD(10, 18, 22), Color = "#2563eb", SortOrder = 0, NextNodeId = null, Feedback = "Deep dives build genuine understanding. Breadth is fine, but depth is rare.", FeedbackVi = "Đào sâu tạo ra sự hiểu biết thật sự. Rộng thì tốt, nhưng sâu mới là quý hiếm." },
+            new() { Text = "It sparked a creative project I immediately started sketching out", TextVi = "Nó khơi dậy một dự án sáng tạo mà tôi bắt đầu phác thảo ngay", PointsAwarded = 28, ScoreDeltas = LdD(12, 28, 22), Color = "#7c3aed", SortOrder = 1, NextNodeId = null, Feedback = "Knowledge → idea → action. That's the creative loop in its purest form.", FeedbackVi = "Kiến thức → ý tưởng → hành động. Đó là vòng lặp sáng tạo ở dạng thuần túy nhất." },
         };
 
         var story2Detail = new StoryDetail

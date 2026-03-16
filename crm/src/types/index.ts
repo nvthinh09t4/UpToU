@@ -66,6 +66,23 @@ export interface Category {
   children: Category[]
 }
 
+export interface CategoryScoreType {
+  id: number
+  name: string
+  label: string | null
+  scoreWeight: number
+  orderToShow: number
+}
+
+export interface CategoryBadge {
+  id: number
+  tier: number
+  label: string
+  labelVi: string | null
+  scoreThreshold: number
+  badgeImageUrl: string | null
+}
+
 export interface Tag {
   id: number
   name: string
@@ -267,10 +284,15 @@ export interface AdminRewardItem {
 export interface StoryNodeAnswer {
   id: number
   text: string
+  textVi?: string | null
   pointsAwarded: number
   nextNodeId: number | null
   color: string | null
   sortOrder: number
+  feedback?: string | null
+  feedbackVi?: string | null
+  scoreDeltas?: Record<string, number>
+  branchWeights?: Record<string, number>
 }
 
 export interface StoryNode {
@@ -278,6 +300,8 @@ export interface StoryNode {
   storyDetailId: number
   question: string
   questionSubtitle: string | null
+  questionVi?: string | null
+  questionSubtitleVi?: string | null
   isStart: boolean
   backgroundImageUrl: string | null
   backgroundColor: string | null
@@ -292,6 +316,97 @@ export interface StoryNodeGraph {
   revision: number
   effectiveDate: string | null
   nodes: StoryNode[]
+}
+
+// ── Admin service payload types ───────────────────────────────────────────────
+
+export interface CreateStoryPayload {
+  title: string
+  slug: string | null
+  description: string | null
+  excerpt: string | null
+  coverImageUrl: string | null
+  authorName: string | null
+  isFeatured: boolean
+  categoryId: number
+  publishDate: string | null
+  isPublish: boolean
+  tagIds: number[]
+  savePath: string
+  content: string | null
+  wordCount: number
+  scoreWeight: number
+}
+
+export interface UpdateStoryPayload {
+  title: string
+  slug: string | null
+  description: string | null
+  excerpt: string | null
+  coverImageUrl: string | null
+  authorName: string | null
+  isFeatured: boolean
+  categoryId: number
+  publishDate: string | null
+  isPublish: boolean
+  tagIds: number[]
+  assignedSupervisorId?: string | null
+}
+
+export interface AddStoryDetailPayload {
+  savePath: string
+  content: string | null
+  wordCount: number
+  changeNotes: string | null
+  scoreWeight: number
+  isPublish: boolean
+}
+
+export interface UpsertScoreTypePayload {
+  id?: number
+  name: string
+  label?: string
+  scoreWeight: number
+  orderToShow: number
+}
+
+export interface UpsertBadgePayload {
+  id?: number
+  tier: number
+  label: string
+  labelVi?: string
+  scoreThreshold: number
+  badgeImageUrl?: string
+}
+
+export interface UpsertStoryNodePayload {
+  id?: number
+  storyDetailId: number
+  question: string
+  questionSubtitle?: string
+  questionVi?: string
+  questionSubtitleVi?: string
+  isStart: boolean
+  backgroundImageUrl?: string
+  backgroundColor?: string
+  videoUrl?: string
+  animationType?: string
+  sortOrder: number
+}
+
+export interface UpsertStoryNodeAnswerPayload {
+  id?: number
+  storyNodeId: number
+  text: string
+  textVi?: string
+  pointsAwarded: number
+  scoreDeltas?: Record<string, number>
+  branchWeights?: Record<string, number>
+  nextNodeId?: number | null
+  feedback?: string
+  feedbackVi?: string
+  color?: string
+  sortOrder: number
 }
 
 export interface AuthResponse {

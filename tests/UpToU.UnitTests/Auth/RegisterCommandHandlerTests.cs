@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using UpToU.Core.Commands.Auth;
 using UpToU.Core.Entities;
 using UpToU.Core.Interfaces;
+using UpToU.Infrastructure.Data;
 using UpToU.Infrastructure.Handlers.Auth;
 
 namespace UpToU.UnitTests.Auth;
@@ -16,6 +18,7 @@ public class RegisterCommandHandlerTests
     private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
     private readonly Mock<ILogger<RegisterCommandHandler>> _loggerMock;
+    private readonly ApplicationDbContext _db;
 
     public RegisterCommandHandlerTests()
     {
@@ -32,10 +35,15 @@ public class RegisterCommandHandlerTests
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContext);
 
         _loggerMock = new Mock<ILogger<RegisterCommandHandler>>();
+
+        var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _db = new ApplicationDbContext(dbOptions);
     }
 
     private RegisterCommandHandler CreateHandler() =>
-        new(_userManagerMock.Object, _emailServiceMock.Object, _httpContextAccessorMock.Object, _loggerMock.Object);
+        new(_userManagerMock.Object, _emailServiceMock.Object, _httpContextAccessorMock.Object, _loggerMock.Object, _db);
 
     [Fact]
     public async Task Handle_WhenEmailAlreadyExists_ReturnsConflict()

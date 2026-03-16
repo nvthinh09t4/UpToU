@@ -57,4 +57,18 @@ public class LeaderboardController : ControllerBase
         var result = await _mediator.Send(new GetLeaderboardSummaryQuery(timePeriod, top), ct);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
     }
+
+    /// <summary>
+    /// Contributor leaderboard — authors ranked by contributed points
+    /// (earned when readers finish their stories).
+    /// The #1 holds the exclusive Contributor Champion title.
+    /// </summary>
+    [HttpGet("contributors")]
+    public async Task<ActionResult<ContributorLeaderboardDto>> GetContributors(
+        [FromQuery] int top = 50,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetContributorLeaderboardQuery(top), ct);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error, statusCode: result.StatusCode);
+    }
 }
