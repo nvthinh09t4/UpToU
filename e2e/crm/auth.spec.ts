@@ -24,7 +24,7 @@ test.describe('CRM / Login', () => {
 
   test('admin login succeeds and redirects to dashboard', async ({ page }) => {
     await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
-    await expect(page).toHaveURL(/^\/((?!login).)*$/)
+    await expect(page).not.toHaveURL(/\/login/)
   })
 
   test('non-staff user is rejected with an error', async ({ page }) => {
@@ -44,7 +44,8 @@ test.describe('CRM / Auth Guard', () => {
     const ctx = await browser.newContext() // fresh context, no auth
     const page = await ctx.newPage()
     await page.goto('/')
-    await expect(page).toHaveURL(/\/login/)
+    // AppBootstrap attempts /auth/refresh (no cookie → 401), then ProtectedRoute redirects
+    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 })
     await ctx.close()
   })
 })

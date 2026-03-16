@@ -15,23 +15,22 @@ test.describe('CRM / Categories Page', () => {
 
   test('categories data grid renders', async ({ page }) => {
     await page.goto('/categories')
-    await page.waitForTimeout(3_000)
     const grid = page.getByRole('grid')
-    await expect(grid).toBeVisible({ timeout: 8_000 })
+    await expect(grid).toBeVisible({ timeout: 20_000 })
   })
 
   test('Add Category button is visible', async ({ page }) => {
     await page.goto('/categories')
     await expect(
-      page.getByRole('button', { name: /add category|new category/i })
-    ).toBeVisible()
+      page.getByRole('button', { name: /new category/i })
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('search field filters categories', async ({ page }) => {
     await page.goto('/categories')
-    await page.waitForTimeout(2_000)
-    const search = page.getByRole('textbox', { name: /search/i })
-    await expect(search).toBeVisible()
+    // TextField has only a placeholder, no label — locate by placeholder
+    const search = page.locator('input[placeholder*="Search"]')
+    await expect(search).toBeVisible({ timeout: 15_000 })
     await search.fill('test')
     await page.waitForTimeout(500)
     // No crash after searching
@@ -40,10 +39,8 @@ test.describe('CRM / Categories Page', () => {
 
   test('create category dialog opens on Add click', async ({ page }) => {
     await page.goto('/categories')
-    await page.getByRole('button', { name: /add category|new category/i }).click()
-    // Dialog should open
-    await expect(page.getByRole('dialog')).toBeVisible()
-    // Close dialog
+    await page.getByRole('button', { name: /new category/i }).click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 })
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
@@ -63,9 +60,8 @@ test.describe('CRM / Users Page', () => {
 
   test('users data grid renders', async ({ page }) => {
     await page.goto('/users')
-    await page.waitForTimeout(3_000)
     const grid = page.getByRole('grid')
-    await expect(grid).toBeVisible({ timeout: 8_000 })
+    await expect(grid).toBeVisible({ timeout: 20_000 })
   })
 })
 

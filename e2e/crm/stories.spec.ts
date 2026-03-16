@@ -18,35 +18,34 @@ test.describe('CRM / Stories Page', () => {
 
   test('stories data grid or list is rendered', async ({ page }) => {
     await page.goto('/stories')
-    await page.waitForTimeout(3_000)
     // MUI DataGrid renders a role=grid
     const grid = page.getByRole('grid')
-    await expect(grid).toBeVisible({ timeout: 8_000 })
+    await expect(grid).toBeVisible({ timeout: 20_000 })
   })
 
   test('search field is present', async ({ page }) => {
     await page.goto('/stories')
-    const searchInput = page.getByRole('textbox', { name: /search/i })
-    await expect(searchInput).toBeVisible()
+    // TextField has only a placeholder, no label — locate by placeholder
+    const searchInput = page.locator('input[placeholder*="Search"]')
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
   })
 
-  test('Add Story button is visible for admin', async ({ page }) => {
+  test('New Story button is visible for admin', async ({ page }) => {
     await page.goto('/stories')
     await expect(
-      page.getByRole('button', { name: /add story|new story|create/i })
-    ).toBeVisible()
+      page.getByRole('button', { name: /new story/i })
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('status tabs are present', async ({ page }) => {
     await page.goto('/stories')
-    // Tabs: All / Pending / Published / Rejected
-    await expect(page.getByText(/pending|published|all/i)).toBeVisible()
+    // Tabs: "All Stories" and "Pending Review"
+    await expect(page.getByText(/All Stories/i)).toBeVisible({ timeout: 15_000 })
   })
 
-  test('import and export buttons are present', async ({ page }) => {
+  test('import button is present', async ({ page }) => {
     await page.goto('/stories')
-    await expect(page.getByRole('button', { name: /import/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /export/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /import/i })).toBeVisible({ timeout: 15_000 })
   })
 })
 

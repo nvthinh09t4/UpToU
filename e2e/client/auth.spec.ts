@@ -73,19 +73,14 @@ test.describe('Client / Logout', () => {
 
   test('user can log out via header menu', async ({ page }) => {
     await page.goto('/')
-    // Open user menu
-    const userBtn = page.getByRole('button', { name: /account|user|menu/i }).last()
-    if (await userBtn.isVisible()) {
-      await userBtn.click()
-      const logoutItem = page.getByRole('menuitem', { name: /sign out|logout/i })
-      if (await logoutItem.isVisible()) {
-        await logoutItem.click()
-        await expect(page).toHaveURL(/\/(login|$)/)
-      }
-    } else {
-      // Fallback: sign-out link
-      const signOutLink = page.getByRole('link', { name: /sign out|logout/i })
-      await expect(signOutLink).toBeVisible()
-    }
+    // Wait for bootstrap + auth to complete — the user menu button appears
+    const userBtn = page.getByRole('button', { name: /open user menu/i })
+    await expect(userBtn).toBeVisible({ timeout: 30_000 })
+    await userBtn.click()
+    // Logout button is a plain button, not a menuitem
+    const logoutBtn = page.getByRole('button', { name: /logout|sign out/i })
+    await expect(logoutBtn).toBeVisible()
+    await logoutBtn.click()
+    await expect(page).toHaveURL(/\/(login|$)/, { timeout: 10_000 })
   })
 })

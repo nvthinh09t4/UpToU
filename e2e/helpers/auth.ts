@@ -3,10 +3,10 @@ import type { Page } from '@playwright/test'
 // ── Seed account credentials ──────────────────────────────────────────────────
 
 export const ACCOUNTS = {
-  admin:       { email: 'admin@uptou.com',        password: '123456aA@', role: 'Admin' },
-  senior:      { email: 'senior@uptou.com',        password: '123456aA@', role: 'Senior Supervisor' },
-  supervisor:  { email: 'supervisor@uptou.com',    password: '123456aA@', role: 'Supervisor' },
-  contributor: { email: 'contributor@uptou.com',   password: '123456aA@', role: 'Contributor' },
+  admin:       { email: 'admintest@uptou.local',    password: '123456aA@', role: 'Admin' },
+  senior:      { email: 'seniorsuper@uptou.local',  password: '123456aA@', role: 'Senior Supervisor' },
+  supervisor:  { email: 'supervisor1@uptou.local',  password: '123456aA@', role: 'Supervisor' },
+  contributor: { email: 'contributor1@uptou.local', password: '123456aA@', role: 'Contributor' },
 } as const
 
 // ── Client login ──────────────────────────────────────────────────────────────
