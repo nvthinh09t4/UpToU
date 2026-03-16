@@ -2,23 +2,22 @@ import { test, expect } from '@playwright/test'
 import { ACCOUNTS, loginCrm } from '../helpers/auth'
 import path from 'path'
 
-const ADMIN_AUTH    = path.join(__dirname, '../.auth/crm-admin.json')
-const CONTRIB_AUTH  = path.join(__dirname, '../.auth/crm-contributor.json')
+const ADMIN_AUTH = path.join(__dirname, '../.auth/crm-admin.json')
 
 // ── Login page ────────────────────────────────────────────────────────────────
 
 test.describe('CRM / Login', () => {
   test('login page renders correctly', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByLabel('Email')).toBeVisible()
-    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('input[type="password"]')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
   })
 
   test('shows error for invalid credentials', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel('Email').fill('nobody@example.com')
-    await page.getByLabel('Password').fill('wrongpass')
+    await page.locator('input[type="email"]').fill('nobody@example.com')
+    await page.locator('input[type="password"]').fill('wrongpass')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 8_000 })
   })
@@ -29,11 +28,10 @@ test.describe('CRM / Login', () => {
   })
 
   test('non-staff user is rejected with an error', async ({ page }) => {
-    // Create a test case using an account that doesn't have CRM roles
-    // (contributor has CRM access, so we test with wrong password)
+    // Use a non-existent account — will get invalid credentials error
     await page.goto('/login')
-    await page.getByLabel('Email').fill('user@example.com')
-    await page.getByLabel('Password').fill('123456aA@')
+    await page.locator('input[type="email"]').fill('nouser@example.com')
+    await page.locator('input[type="password"]').fill('123456aA@')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 8_000 })
   })

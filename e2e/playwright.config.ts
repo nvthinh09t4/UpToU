@@ -16,8 +16,9 @@ export default defineConfig({
   testMatch: ['**/*.spec.ts'],
 
   // Global test settings
+  // Setup tests override this to 120 s (Vite cold-start can take 30–40 s)
   timeout: 30_000,
-  expect: { timeout: 8_000 },
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
@@ -35,6 +36,7 @@ export default defineConfig({
 
   projects: [
     // ── Authentication setup ────────────────────────────────────────────────
+    // These run first and save auth cookies.
     {
       name: 'setup-client',
       testMatch: '**/global.setup.ts',

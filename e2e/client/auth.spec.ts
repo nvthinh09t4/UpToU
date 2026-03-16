@@ -9,14 +9,14 @@ const AUTH_FILE = path.join(__dirname, '../.auth/client-user.json')
 test.describe('Client / Login', () => {
   test('login page renders correctly', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByLabel('Email')).toBeVisible()
+    await expect(page.locator('#email')).toBeVisible()
     await expect(page.locator('#password')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
   })
 
   test('shows error for invalid credentials', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel('Email').fill('wrong@example.com')
+    await page.locator('#email').fill('wrong@example.com')
     await page.locator('#password').fill('wrongpassword')
     await page.getByRole('button', { name: 'Sign In' }).click()
     // Error alert should appear
