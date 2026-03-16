@@ -1,5 +1,28 @@
 import { apiClient } from './apiClient'
-import type { AdminRewardItem, AdminUser, Category, DashboardStats, PagedResult, ReportData, Story, StoryDetail, StoryNode, StoryNodeAnswer, StoryNodeGraph, Tag, UserBan } from '@/types'
+import type {
+  AddStoryDetailPayload,
+  AdminRewardItem,
+  AdminUser,
+  Category,
+  CategoryBadge,
+  CategoryScoreType,
+  CreateStoryPayload,
+  DashboardStats,
+  PagedResult,
+  ReportData,
+  Story,
+  StoryDetail,
+  StoryNode,
+  StoryNodeAnswer,
+  StoryNodeGraph,
+  Tag,
+  UpdateStoryPayload,
+  UpsertBadgePayload,
+  UpsertScoreTypePayload,
+  UpsertStoryNodeAnswerPayload,
+  UpsertStoryNodePayload,
+  UserBan,
+} from '@/types'
 
 export const adminService = {
   getDashboard: () =>
@@ -46,6 +69,26 @@ export const adminService = {
   deleteCategory: (id: number) =>
     apiClient.delete(`/admin/categories/${id}`),
 
+  // Score Types
+  getScoreTypes: (categoryId: number) =>
+    apiClient.get<CategoryScoreType[]>(`/admin/categories/${categoryId}/score-types`),
+
+  upsertScoreType: (categoryId: number, data: UpsertScoreTypePayload) =>
+    apiClient.post<CategoryScoreType>(`/admin/categories/${categoryId}/score-types`, data),
+
+  deleteScoreType: (scoreTypeId: number) =>
+    apiClient.delete(`/admin/categories/score-types/${scoreTypeId}`),
+
+  // Badges
+  getBadges: (categoryId: number) =>
+    apiClient.get<CategoryBadge[]>(`/admin/categories/${categoryId}/badges`),
+
+  upsertBadge: (categoryId: number, data: UpsertBadgePayload) =>
+    apiClient.post<CategoryBadge>(`/admin/categories/${categoryId}/badges`, data),
+
+  deleteBadge: (badgeId: number) =>
+    apiClient.delete(`/admin/categories/badges/${badgeId}`),
+
   // Stories
   getStories: (categoryId?: number) =>
     apiClient.get<Story[]>('/admin/stories', { params: categoryId ? { categoryId } : undefined }),
@@ -53,19 +96,11 @@ export const adminService = {
   getStory: (id: number) =>
     apiClient.get<Story>(`/stories/${id}`),
 
-  createStory: (data: {
-    title: string; slug: string | null; description: string | null; excerpt: string | null
-    coverImageUrl: string | null; authorName: string | null; isFeatured: boolean
-    categoryId: number; publishDate: string | null; isPublish: boolean; tagIds: number[]
-    savePath: string; content: string | null; wordCount: number; scoreWeight: number
-  }) => apiClient.post<Story>('/admin/stories', data),
+  createStory: (data: CreateStoryPayload) =>
+    apiClient.post<Story>('/admin/stories', data),
 
-  updateStory: (id: number, data: {
-    title: string; slug: string | null; description: string | null; excerpt: string | null
-    coverImageUrl: string | null; authorName: string | null; isFeatured: boolean
-    categoryId: number; publishDate: string | null; isPublish: boolean; tagIds: number[]
-    assignedSupervisorId?: string | null
-  }) => apiClient.put<Story>(`/admin/stories/${id}`, data),
+  updateStory: (id: number, data: UpdateStoryPayload) =>
+    apiClient.put<Story>(`/admin/stories/${id}`, data),
 
   deleteStory: (id: number) =>
     apiClient.delete(`/admin/stories/${id}`),
@@ -86,10 +121,8 @@ export const adminService = {
   getStoryDetails: (storyId: number) =>
     apiClient.get<StoryDetail[]>(`/admin/stories/${storyId}/details`),
 
-  addStoryDetail: (storyId: number, data: {
-    savePath: string; content: string | null; wordCount: number
-    changeNotes: string | null; scoreWeight: number; isPublish: boolean
-  }) => apiClient.post<StoryDetail>(`/admin/stories/${storyId}/details`, { storyId, ...data }),
+  addStoryDetail: (storyId: number, data: AddStoryDetailPayload) =>
+    apiClient.post<StoryDetail>(`/admin/stories/${storyId}/details`, { storyId, ...data }),
 
   // Tags
   getTags: () =>
@@ -132,19 +165,14 @@ export const adminService = {
   getStoryNodeGraph: (detailId: number) =>
     apiClient.get<StoryNodeGraph>(`/admin/story-nodes/${detailId}`),
 
-  upsertStoryNode: (data: {
-    id?: number; storyDetailId: number; question: string; questionSubtitle?: string;
-    isStart: boolean; backgroundImageUrl?: string; backgroundColor?: string;
-    videoUrl?: string; animationType?: string; sortOrder: number;
-  }) => apiClient.post<StoryNode>('/admin/story-nodes', data),
+  upsertStoryNode: (data: UpsertStoryNodePayload) =>
+    apiClient.post<StoryNode>('/admin/story-nodes', data),
 
   deleteStoryNode: (id: number) =>
     apiClient.delete(`/admin/story-nodes/${id}`),
 
-  upsertStoryNodeAnswer: (data: {
-    id?: number; storyNodeId: number; text: string; pointsAwarded: number;
-    nextNodeId?: number | null; color?: string; sortOrder: number;
-  }) => apiClient.post<StoryNodeAnswer>('/admin/story-node-answers', data),
+  upsertStoryNodeAnswer: (data: UpsertStoryNodeAnswerPayload) =>
+    apiClient.post<StoryNodeAnswer>('/admin/story-node-answers', data),
 
   deleteStoryNodeAnswer: (id: number) =>
     apiClient.delete(`/admin/story-node-answers/${id}`),

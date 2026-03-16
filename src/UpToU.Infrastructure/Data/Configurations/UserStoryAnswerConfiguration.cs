@@ -24,7 +24,8 @@ public class UserStoryAnswerConfiguration : IEntityTypeConfiguration<UserStoryAn
         builder.Property(a => a.ScoreDeltas)
                .HasConversion(
                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                   v => JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, int>(),
+                   v => string.IsNullOrWhiteSpace(v) ? new Dictionary<string, int>()
+                        : JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, int>(),
                    new ValueComparer<Dictionary<string, int>>(
                        (x, y) => x != null && y != null && x.Count == y.Count && !x.Except(y).Any(),
                        v => v.Aggregate(0, (h, kv) => HashCode.Combine(h, kv.Key.GetHashCode(), kv.Value.GetHashCode())),

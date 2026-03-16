@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, Clock, User, Tag as TagIcon, BookOpen, Eye, Coins, Play } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, Tag as TagIcon, BookOpen, Eye, Coins, Play, Sparkles } from 'lucide-react';
 import { storyApi } from '../services/storyApi';
 import { voteApi } from '../services/voteApi';
 import { creditApi } from '../services/creditApi';
+import { readTime } from '../utils/storyUtils';
+import { renderMarkdown } from '../utils/markdownUtils';
+import { SITE_URL } from '../constants/siteConfig';
 import { SEOHead, JsonLd } from '../components/SEOHead';
 import { CategoryNav } from '../components/layout/CategoryNav';
 import { Button } from '../components/ui/button';
@@ -17,36 +20,6 @@ import { useAuthStore } from '../store/authStore';
 import type { VoteResult } from '../types/vote';
 import { InteractiveStoryViewer } from '../components/interactive/InteractiveStoryViewer';
 
-function readTime(wordCount: number): string {
-  const minutes = Math.max(1, Math.round(wordCount / 200));
-  return `${minutes} min read`;
-}
-
-function renderMarkdown(content: string): string {
-  return content
-    .replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold mt-6 mb-2">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-8 mb-3">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">$1</code>')
-    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre class="bg-muted rounded-lg p-4 overflow-x-auto my-4 text-sm font-mono"><code>$1</code></pre>')
-    .replace(/^\| (.+) \|$/gm, (_, row) => {
-      const cells = row.split(' | ').map((c: string) => `<td class="border border-border px-3 py-2 text-sm">${c}</td>`).join('');
-      return `<tr>${cells}</tr>`;
-    })
-    .replace(/(<tr>.*<\/tr>\n?)+/g, (table) => `<div class="overflow-x-auto my-4"><table class="border-collapse border border-border w-full">${table}</table></div>`)
-    .replace(/^---$/gm, '<hr class="my-6 border-border">')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-primary pl-4 my-4 text-muted-foreground italic">$1</blockquote>')
-    .replace(/^- \[ \] (.+)$/gm, '<li class="flex items-center gap-2 my-1"><span class="h-4 w-4 rounded border border-border inline-block"></span>$1</li>')
-    .replace(/^- (.+)$/gm, '<li class="list-disc ml-6 my-1">$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li class="list-decimal ml-6 my-1">$2</li>')
-    .replace(/(<li.*<\/li>\n?)+/g, (list) => `<ul class="my-3">${list}</ul>`)
-    .replace(/\n\n/g, '</p><p class="mb-4">')
-    .replace(/^(?!<[hbpuolt])/gm, '')
-    .trim();
-}
-
 export function StoryPage() {
   const { id } = useParams<{ id: string }>();
   const storyId = parseInt(id ?? '0', 10);
@@ -57,30 +30,22 @@ export function StoryPage() {
     enabled: !!storyId,
   });
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   const [storyVote, setStoryVote] = useState<VoteResult | null>(null);
   const [creditClaimed, setCreditClaimed] = useState(false);
   const [showInteractive, setShowInteractive] = useState(false);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  // Auto-launch the interactive viewer as soon as the story loads
+  // Auto-launch the interactive viewer once the story type is known
   useEffect(() => {
-    if (story?.storyType === 'Interactive' && isAuthenticated) {
+    if (story?.storyType === 'Interactive' && isAuthenticated && !showInteractive) {
       setShowInteractive(true);
     }
-  }, [story?.storyType, isAuthenticated]);
-  const user = useAuthStore((s) => s.user);
-  const setAuth = useAuthStore((s) => s.setAuth);
-  const accessToken = useAuthStore((s) => s.accessToken);
+  }, [story?.storyType, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { mutate: claimRead, isPending: claimingRead } = useMutation({
     mutationFn: () => creditApi.claimStoryRead(storyId),
-    onSuccess: () => {
-      setCreditClaimed(true);
-      // Update user's balance in the store
-      if (user && accessToken) {
-        setAuth(accessToken, { ...user, creditBalance: user.creditBalance + 5 });
-      }
-    },
+    onSuccess: () => setCreditClaimed(true),
     onError: () => setCreditClaimed(true), // Already claimed — hide button
   });
 
@@ -127,7 +92,6 @@ export function StoryPage() {
 
   const detail = story.latestDetail;
 
-  const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://uptou.com';
   const pageUrl = `${SITE_URL}/stories/${storyId}`;
   const articleSchema = {
     '@context': 'https://schema.org',
@@ -257,23 +221,118 @@ export function StoryPage() {
         </Link>
 
         {story.storyType === 'Interactive' ? (
-          <div className="flex flex-col items-center py-16">
-            <div className="mb-4 rounded-full bg-primary/10 p-4">
-              <Play className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold">Interactive Story</h3>
-            <p className="mb-6 max-w-sm text-center text-sm text-muted-foreground">
-              Your choices shape the outcome and earn you credits.
-            </p>
-            {isAuthenticated ? (
-              <Button onClick={() => setShowInteractive(true)}>
-                {showInteractive ? 'Resume Story' : 'Play Story'}
-              </Button>
+          <div
+            className="relative overflow-hidden rounded-2xl"
+            style={{ minHeight: '380px' }}
+          >
+            {/* Background */}
+            {story.coverImageUrl ? (
+              <img
+                src={story.coverImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                aria-hidden
+              />
             ) : (
-              <Link to={`/login?redirect=/stories/${storyId}`}>
-                <Button>Login to Play</Button>
-              </Link>
+              <div
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)' }}
+              />
             )}
+
+            {/* Overlays */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/85" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+
+            {/* Floating ambient glow */}
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none"
+              style={{
+                width: '400px',
+                height: '200px',
+                background: 'radial-gradient(ellipse, rgba(99,102,241,0.25) 0%, transparent 70%)',
+                filter: 'blur(32px)',
+              }}
+            />
+
+            {/* Content */}
+            <div className="relative z-10 flex flex-col items-center justify-end px-8 py-12 text-center" style={{ minHeight: '380px' }}>
+              {/* Badge */}
+              <div
+                className="mb-5 flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
+                style={{
+                  background: 'rgba(99,102,241,0.18)',
+                  border: '1px solid rgba(99,102,241,0.4)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <Sparkles className="h-3 w-3 text-indigo-400" />
+                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-300">
+                  Interactive Story
+                </span>
+              </div>
+
+              <h3
+                className="mb-3 text-2xl font-extrabold text-white sm:text-3xl"
+                style={{ textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}
+              >
+                {story.title}
+              </h3>
+
+              <p className="mb-2 max-w-sm text-sm leading-relaxed text-white/60">
+                Every choice matters. Shape your own path and earn credits along the way.
+              </p>
+
+              {/* Stats row */}
+              {story.viewCount > 0 && (
+                <div className="mb-7 flex items-center gap-4 text-xs text-white/35">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {story.viewCount.toLocaleString()} plays
+                  </span>
+                  {story.categoryTitle && (
+                    <>
+                      <span className="h-3 w-px bg-white/20" />
+                      <span>{story.categoryTitle}</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* CTA */}
+              {isAuthenticated ? (
+                <button
+                  onClick={() => setShowInteractive(true)}
+                  className="group relative overflow-hidden rounded-2xl px-10 py-4 text-sm font-bold text-white transition-transform duration-200 hover:scale-105 active:scale-95"
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+                    boxShadow: '0 0 28px rgba(99,102,241,0.5), 0 4px 24px rgba(0,0,0,0.4)',
+                  }}
+                >
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  <span className="relative flex items-center gap-2.5">
+                    <Play className="h-4 w-4 fill-white" />
+                    Begin Adventure
+                  </span>
+                </button>
+              ) : (
+                <Link to={`/login?redirect=/stories/${storyId}`}>
+                  <button
+                    className="group relative overflow-hidden rounded-2xl px-10 py-4 text-sm font-bold text-white transition-transform duration-200 hover:scale-105 active:scale-95"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+                      boxShadow: '0 0 28px rgba(99,102,241,0.5), 0 4px 24px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className="relative flex items-center gap-2.5">
+                      <Play className="h-4 w-4 fill-white" />
+                      Login to Play
+                    </span>
+                  </button>
+                </Link>
+              )}
+            </div>
           </div>
         ) : detail?.content ? (
           <article
@@ -287,14 +346,6 @@ export function StoryPage() {
             <BookOpen className="mx-auto mb-3 h-10 w-10 opacity-30" />
             <p>Content coming soon.</p>
           </div>
-        )}
-
-        {showInteractive && (
-          <InteractiveStoryViewer
-            storyId={story.id}
-            storyTitle={story.title}
-            onClose={() => setShowInteractive(false)}
-          />
         )}
 
         {/* Claim credits for reading */}
@@ -349,6 +400,26 @@ export function StoryPage() {
           </div>
         </div>
       </footer>
+
+      {/* Full-page interactive viewer — slides in from the right */}
+      {showInteractive && (
+        <>
+          <style>{`
+            @keyframes story-slide-in {
+              from { transform: translateX(100%) }
+              to   { transform: translateX(0) }
+            }
+            .story-slide-in { animation: story-slide-in 0.4s cubic-bezier(.4,0,.2,1) both }
+          `}</style>
+          <div className="fixed inset-0 z-50 story-slide-in">
+            <InteractiveStoryViewer
+              storyId={story.id}
+              storyTitle={story.title}
+              onClose={() => setShowInteractive(false)}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 }

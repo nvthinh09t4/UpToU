@@ -1,0 +1,260 @@
+/* UpToU – Swagger UI custom styles */
+
+/* ── Token bar ────────────────────────────────────────────────────────────── */
+
+#ctb-bar {
+  background: #1c1d1f;
+  border-bottom: 2px solid #2d2f33;
+  padding: 10px 24px;
+  position: sticky;
+  top: 50px; /* below the topbar */
+  z-index: 99;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+.ctb-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1480px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.ctb-key-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ctb-label {
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #85ea2d;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#ctb-input {
+  flex: 1;
+  min-width: 260px;
+  padding: 8px 14px;
+  background: #2b2d30;
+  border: 1px solid #3e4045;
+  border-radius: 6px;
+  color: #d4d4d4;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#ctb-input:focus {
+  border-color: #85ea2d;
+  box-shadow: 0 0 0 2px rgba(133, 234, 45, 0.15);
+}
+
+#ctb-apply,
+#ctb-clear {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  flex-shrink: 0;
+}
+
+#ctb-apply {
+  background: #85ea2d;
+  color: #1c1d1f;
+}
+
+#ctb-clear {
+  background: #3e4045;
+  color: #aaa;
+}
+
+#ctb-apply:hover,
+#ctb-clear:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+#ctb-apply:active,
+#ctb-clear:active {
+  transform: translateY(0);
+}
+
+#ctb-status {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 100px;
+  transition: opacity 0.3s;
+}
+
+.ctb-ok   { color: #85ea2d; }
+.ctb-warn { color: #f99157; }
+
+
+/* ── Tab navigation ───────────────────────────────────────────────────────── */
+
+#ctb-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 0 24px 0 0;
+}
+
+#ctb-tabs button {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid #3e4045;
+  background: transparent;
+  color: #aaa;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+#ctb-tabs button:hover {
+  border-color: #85ea2d;
+  color: #85ea2d;
+  background: rgba(133, 234, 45, 0.06);
+}
+
+#ctb-tabs button.active {
+  background: #85ea2d;
+  color: #1c1d1f;
+  border-color: #85ea2d;
+  font-weight: 700;
+}
+
+
+/* ── Always-on execute mode: hide "Try it out" and "Cancel" toggles ───────── */
+
+.try-out__btn,
+.btn-group > .btn.cancel {
+  display: none !important;
+}
+
+
+/* ── Hide per-endpoint auth lock (we handle auth globally) ───────────────── */
+
+.opblock-summary-control .authorization__btn {
+  display: none !important;
+}
+
+
+/* ── Hide schema section (cleans up the bottom of the page) ─────────────── */
+
+section.models {
+  display: none !important;
+}
+
+
+/* ── Topbar: hide the Swagger "pet store" logo link URL bar ─────────────── */
+
+.topbar-wrapper .download-url-wrapper {
+  flex: unset;
+}
+
+
+/* ── Operation blocks: subtle border-radius and spacing improvement ──────── */
+
+.opblock {
+  border-radius: 8px !important;
+  margin-bottom: 6px !important;
+}
+
+.opblock-summary {
+  border-radius: 8px !important;
+}
+
+.opblock.is-open .opblock-summary {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+/* ── Filter input ─────────────────────────────────────────────────────────── */
+
+.filter-container .operation-filter-input {
+  background: #2b2d30 !important;
+  border-color: #3e4045 !important;
+  color: #d4d4d4 !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+}
+
+.filter-container .operation-filter-input:focus {
+  border-color: #85ea2d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(133, 234, 45, 0.12) !important;
+}
+
+
+/* ── Parameters: always show the editable textbox style cleanly ──────────── */
+
+.parameter__type {
+  font-size: 11px;
+}
+
+table.parameters td.parameters-col_description input,
+table.parameters td.parameters-col_description textarea,
+table.parameters td.parameters-col_description select {
+  background: #2b2d30 !important;
+  border: 1px solid #3e4045 !important;
+  border-radius: 5px !important;
+  color: #d4d4d4 !important;
+  font-size: 12px !important;
+  font-family: 'Fira Code', 'Consolas', monospace !important;
+  padding: 6px 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+table.parameters td.parameters-col_description input:focus,
+table.parameters td.parameters-col_description textarea:focus {
+  border-color: #85ea2d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(133, 234, 45, 0.1) !important;
+}
+
+/* Body textarea */
+.body-param__text {
+  background: #2b2d30 !important;
+  border: 1px solid #3e4045 !important;
+  border-radius: 6px !important;
+  color: #d4d4d4 !important;
+  font-family: 'Fira Code', 'Consolas', monospace !important;
+  font-size: 12px !important;
+  min-height: 120px !important;
+  padding: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.body-param__text:focus {
+  border-color: #85ea2d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(133, 234, 45, 0.1) !important;
+}
+
+/* Execute button */
+.btn.execute {
+  background: #85ea2d !important;
+  color: #1c1d1f !important;
+  border-color: #85ea2d !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+
+.btn.execute:hover {
+  background: #76d428 !important;
+  border-color: #76d428 !important;
+}

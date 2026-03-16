@@ -31,6 +31,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ContributedPointTransaction> ContributedPointTransactions => Set<ContributedPointTransaction>();
     public DbSet<CategoryScoreType> CategoryScoreTypes => Set<CategoryScoreType>();
     public DbSet<StoryTranslation> StoryTranslations => Set<StoryTranslation>();
+    public DbSet<CategoryBadge> CategoryBadges => Set<CategoryBadge>();
+    public DbSet<UserCategoryBadge> UserCategoryBadges => Set<UserCategoryBadge>();
+    public DbSet<UserStreak> UserStreaks => Set<UserStreak>();
+    public DbSet<StoryRating> StoryRatings => Set<StoryRating>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

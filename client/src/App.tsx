@@ -15,6 +15,8 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { RewardsPage } from './pages/RewardsPage';
 import { StoryPage } from './pages/StoryPage';
+import { AdminCategoryEditPage } from './pages/admin/AdminCategoryEditPage';
+import { AdminCategoryListPage } from './pages/admin/AdminCategoryListPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +50,10 @@ function App() {
             <Route path="/bookmarks" element={<BookmarksPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/rewards" element={<RewardsPage />} />
+
+            {/* Admin routes */}
+            <Route path="/admin/categories" element={<AdminCategoryListPage />} />
+            <Route path="/admin/categories/:id" element={<AdminCategoryEditPage />} />
           </Route>
 
           {/* Default redirect */}

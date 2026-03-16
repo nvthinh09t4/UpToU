@@ -1,12 +1,12 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.DTOs.Story;
-using UpToU.Core.Entities;
 using UpToU.Core.Models;
 using UpToU.Infrastructure.Data;
+using UpToU.Infrastructure.Extensions;
 
 namespace UpToU.Infrastructure.Handlers.Story;
 
@@ -14,16 +14,21 @@ public class GetInteractiveStoryProgressHandler : IRequestHandler<GetInteractive
 {
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<GetInteractiveStoryProgressHandler> _logger;
 
-    public GetInteractiveStoryProgressHandler(ApplicationDbContext db, IHttpContextAccessor httpContextAccessor)
+    public GetInteractiveStoryProgressHandler(
+        ApplicationDbContext db,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<GetInteractiveStoryProgressHandler> logger)
     {
         _db = db;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     public async Task<Result<InteractiveStoryStateDto?>> Handle(GetInteractiveStoryProgressQuery request, CancellationToken ct)
     {
-        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = _httpContextAccessor.GetUserId();
         if (string.IsNullOrEmpty(userId))
             return Result<InteractiveStoryStateDto?>.Unauthorized("Authentication required.");
 
@@ -34,31 +39,23 @@ public class GetInteractiveStoryProgressHandler : IRequestHandler<GetInteractive
         if (progress is null)
             return Result<InteractiveStoryStateDto?>.Success(null);
 
-        StoryNodeDto? currentNodeDto = null;
-        if (progress.CurrentNodeId.HasValue)
-        {
-            currentNodeDto = await _db.StoryNodes.AsNoTracking()
-                .Where(n => n.Id == progress.CurrentNodeId.Value)
-                .Select(n => new StoryNodeDto(
-                    n.Id, n.StoryDetailId, n.Question, n.QuestionSubtitle, n.IsStart,
-                    n.BackgroundImageUrl, n.BackgroundColor, n.VideoUrl, n.AnimationType, n.SortOrder,
-                    n.Answers.OrderBy(a => a.SortOrder).ThenBy(a => a.Id)
-                        .Select(a => new StoryNodeAnswerDto(a.Id, a.Text, a.PointsAwarded, a.NextNodeId, a.Color, a.SortOrder))
-                        .ToList()))
-                .FirstOrDefaultAsync(ct);
-        }
+        var scoreTypes = await _db.Stories.AsNoTracking()
+            .Where(s => s.Id == progress.StoryId)
+            .SelectMany(s => s.Category.ScoreTypes)
+            .OrderBy(st => st.OrderToShow)
+            .Select(st => new CategoryScoreTypeDto(st.Id, st.Name, st.Label, st.ScoreWeight, st.OrderToShow))
+            .ToListAsync(ct);
 
-        var visitedCount = await _db.UserStoryAnswers.CountAsync(a => a.ProgressId == progress.Id, ct);
+        var categoryId = await _db.Stories.AsNoTracking()
+            .Where(s => s.Id == progress.StoryId)
+            .Select(s => s.CategoryId)
+            .FirstOrDefaultAsync(ct);
 
-        var state = new InteractiveStoryStateDto(
-            progress.Id,
-            progress.StoryId,
-            progress.StoryDetailId,
-            progress.IsCompleted,
-            progress.TotalPointsEarned,
-            currentNodeDto,
-            visitedCount);
+        _logger.LogDebug(
+            "Fetched interactive story progress. {UserId} {StoryId} {ProgressId} IsCompleted={IsCompleted}",
+            userId, request.StoryId, progress.Id, progress.IsCompleted);
 
+        var state = await InteractiveStoryHelpers.BuildStateAsync(_db, progress, categoryId, null, ct);
         return Result<InteractiveStoryStateDto?>.Success(state);
     }
 }

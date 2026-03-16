@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Gift,
   Languages,
+  LayoutDashboard,
   LogOut,
   Moon,
   Sun,
@@ -57,7 +58,11 @@ export function UserMenu() {
 
   async function handleLogout() {
     setOpen(false);
-    try { await authApi.logout(); } catch { /* ignore */ }
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.warn('[WARN] Logout API call failed', err);
+    }
     clearAuth();
     navigate('/');
   }
@@ -138,6 +143,21 @@ export function UserMenu() {
             <MenuItem icon={<Gift className="h-4 w-4" />} label={t('userMenu.rewardsShop')} to="/rewards" onClose={() => setOpen(false)} />
             <MenuItem icon={<Trophy className="h-4 w-4" />} label={t('userMenu.leaderboard')} to="/leaderboard" onClose={() => setOpen(false)} />
           </div>
+
+          {/* Admin section — visible to Admin and Staff only */}
+          {(user.roles.includes('Admin') || user.roles.includes('Staff')) && (
+            <div className="border-t border-border py-1">
+              <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Admin
+              </p>
+              <MenuItem
+                icon={<LayoutDashboard className="h-4 w-4" />}
+                label="Manage Categories"
+                to="/admin/categories"
+                onClose={() => setOpen(false)}
+              />
+            </div>
+          )}
 
           <div className="border-t border-border py-1">
             {/* Theme toggle */}

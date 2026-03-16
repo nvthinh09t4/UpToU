@@ -11,7 +11,7 @@ export function LoginPage() {
   const registered = searchParams.get('registered') === 'true';
 
   return (
-    <AuthLayout title={t('auth.login.title')}>
+    <AuthLayout title={t('auth.login.title')} subtitle="Welcome back — your stories are waiting.">
       <div className="space-y-6">
         {registered && (
           <Alert>

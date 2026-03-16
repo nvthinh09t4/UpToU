@@ -49,6 +49,9 @@ public class Story
     /// <summary>Maximum score value for <see cref="MaxScoreTypeId"/>. Null means no score-based completion gate.</summary>
     public int? MaxScoreValue { get; set; }
 
+    /// <summary>Maximum number of questions answered before the story auto-completes. Null = unlimited.</summary>
+    public int? MaxQuestionLimit { get; set; }
+
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<StoryDetail> StoryDetails { get; set; } = new List<StoryDetail>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();

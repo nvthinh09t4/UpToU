@@ -25,15 +25,7 @@ const FOLDERS: { key: Folder; label: string; icon: typeof Inbox }[] = [
   { key: 'Archive', label: 'Archive', icon: Archive },
 ];
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+import { timeAgo } from '../utils/dateUtils';
 
 function notificationText(n: Notification): string {
   if (n.message) return n.message;
@@ -48,7 +40,7 @@ function NotificationTypeIcon({ type }: { type: Notification['type'] }) {
   if (type === 'System') return <Bell className="h-4 w-4 text-blue-500" />;
   if (type === 'Mention')
     return (
-      <span className="flex h-4 w-4 items-center justify-center text-xs font-bold text-primary">
+      <span className="flex h-4 w-4 items-center justify-center text-xs font-bold text-violet-600">
         @
       </span>
     );
@@ -124,9 +116,22 @@ export function NotificationsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <h1 className="mb-6 text-2xl font-bold tracking-tight">Notifications</h1>
 
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b" style={{ background: 'linear-gradient(160deg,#0a0e1a,#0f1626)' }}>
+        <div className="pointer-events-none absolute -top-16 right-0 h-48 w-48 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+              <Bell className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">Notifications</h1>
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row">
           {/* Sidebar - folders */}
           <nav className="flex shrink-0 flex-row gap-1 sm:w-48 sm:flex-col">
@@ -135,11 +140,12 @@ export function NotificationsPage() {
                 key={f.key}
                 onClick={() => { setFolder(f.key); setPage(1); setSelected(new Set()); }}
                 className={[
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
                   folder === f.key
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    ? 'text-white shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 ].join(' ')}
+                style={folder === f.key ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } : undefined}
               >
                 <f.icon className="h-4 w-4" />
                 {f.label}
@@ -153,7 +159,7 @@ export function NotificationsPage() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <button
                 onClick={selectAll}
-                className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
               >
                 {selected.size === items.length && items.length > 0 ? 'Deselect All' : 'Select All'}
               </button>
@@ -163,7 +169,7 @@ export function NotificationsPage() {
                   {hasUnread && (
                     <button
                       onClick={() => markRead(selectedIds)}
-                      className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                      className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
                     >
                       <CheckCheck className="h-3 w-3" /> Mark Read
                     </button>
@@ -171,7 +177,7 @@ export function NotificationsPage() {
                   {folder !== 'Archive' && (
                     <button
                       onClick={() => archiveNotifications(selectedIds)}
-                      className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                      className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
                     >
                       <Archive className="h-3 w-3" /> Archive
                     </button>
@@ -182,7 +188,7 @@ export function NotificationsPage() {
               {folder === 'Archive' && (
                 <button
                   onClick={() => cleanupArchived()}
-                  className="ml-auto flex items-center gap-1 rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                  className="ml-auto flex items-center gap-1 rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="h-3 w-3" /> Clean Up Old
                 </button>
@@ -192,21 +198,21 @@ export function NotificationsPage() {
             {/* List */}
             {isLoading ? (
               <div className="flex justify-center py-16">
-                <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
               </div>
             ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-muted-foreground">
                 <Bell className="mb-3 h-10 w-10 opacity-30" />
                 <p className="text-sm">No notifications in {folder}</p>
               </div>
             ) : (
-              <div className="divide-y divide-border rounded-xl border border-border">
+              <div className="divide-y divide-border rounded-2xl border border-border">
                 {items.map((n) => (
                   <div
                     key={n.id}
                     className={[
                       'flex items-start gap-3 px-4 py-3 transition-colors',
-                      !n.isRead ? 'bg-primary/5' : '',
+                      !n.isRead ? 'bg-violet-500/5' : '',
                       selected.has(n.id) ? 'bg-accent/50' : '',
                     ].join(' ')}
                   >
@@ -215,7 +221,7 @@ export function NotificationsPage() {
                       type="checkbox"
                       checked={selected.has(n.id)}
                       onChange={() => toggleSelect(n.id)}
-                      className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                      className="mt-1 h-4 w-4 rounded border-border accent-violet-600"
                     />
 
                     {/* Icon */}
@@ -255,7 +261,7 @@ export function NotificationsPage() {
 
                     {/* Unread dot */}
                     {!n.isRead && (
-                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-violet-500" />
                     )}
                   </div>
                 ))}
@@ -268,7 +274,7 @@ export function NotificationsPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="rounded border border-border px-3 py-1 text-sm disabled:opacity-40"
+                  className="rounded-full border border-border px-4 py-1.5 text-sm font-medium disabled:opacity-40 hover:bg-muted transition-colors"
                 >
                   Prev
                 </button>
@@ -278,7 +284,7 @@ export function NotificationsPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="rounded border border-border px-3 py-1 text-sm disabled:opacity-40"
+                  className="rounded-full border border-border px-4 py-1.5 text-sm font-medium disabled:opacity-40 hover:bg-muted transition-colors"
                 >
                   Next
                 </button>

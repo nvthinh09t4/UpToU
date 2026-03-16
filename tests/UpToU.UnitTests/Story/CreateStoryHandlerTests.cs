@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using UpToU.Core.Commands.Story;
 using UpToU.Core.Entities;
@@ -51,7 +52,7 @@ public class CreateStoryHandlerTests
     {
         // Arrange
         using var db = CreateInMemoryDb();
-        var handler = new CreateStoryHandler(db, _httpContextMock.Object);
+        var handler = new CreateStoryHandler(db, _httpContextMock.Object, NullLogger<CreateStoryHandler>.Instance);
         var command = DefaultCommand(categoryId: 999);
 
         // Act
@@ -72,7 +73,7 @@ public class CreateStoryHandlerTests
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
-        var handler = new CreateStoryHandler(db, _httpContextMock.Object);
+        var handler = new CreateStoryHandler(db, _httpContextMock.Object, NullLogger<CreateStoryHandler>.Instance);
         var command = DefaultCommand(categoryId: category.Id);
 
         // Act
@@ -102,7 +103,7 @@ public class CreateStoryHandlerTests
         db.Tags.AddRange(tag1, tag2);
         await db.SaveChangesAsync();
 
-        var handler = new CreateStoryHandler(db, _httpContextMock.Object);
+        var handler = new CreateStoryHandler(db, _httpContextMock.Object, NullLogger<CreateStoryHandler>.Instance);
         var command = DefaultCommand(categoryId: category.Id, tagIds: new List<int> { tag1.Id, tag2.Id });
 
         // Act
@@ -123,7 +124,7 @@ public class CreateStoryHandlerTests
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
-        var handler = new CreateStoryHandler(db, _httpContextMock.Object);
+        var handler = new CreateStoryHandler(db, _httpContextMock.Object, NullLogger<CreateStoryHandler>.Instance);
         var command = DefaultCommand(categoryId: category.Id, tagIds: new List<int>());
 
         // Act
@@ -143,7 +144,7 @@ public class CreateStoryHandlerTests
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
-        var handler = new CreateStoryHandler(db, _httpContextMock.Object);
+        var handler = new CreateStoryHandler(db, _httpContextMock.Object, NullLogger<CreateStoryHandler>.Instance);
         var command = DefaultCommand(categoryId: category.Id);
 
         // Act

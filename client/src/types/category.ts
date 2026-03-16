@@ -13,3 +13,31 @@ export interface Category {
   modifiedBy: string | null;
   children: Category[];
 }
+
+export interface CategoryScoreType {
+  id: number;
+  name: string;
+  label: string | null;
+  scoreWeight: number;
+  orderToShow: number;
+}
+
+export interface CategoryBadge {
+  id: number;
+  tier: number;
+  label: string;
+  labelVi: string | null;
+  scoreThreshold: number;
+  badgeImageUrl: string | null;
+}
+
+export interface UserCategoryBadge {
+  badgeId: number;
+  categoryId: number;
+  categoryTitle: string;
+  tier: number;
+  label: string;
+  labelVi: string | null;
+  badgeImageUrl: string | null;
+  awardedAt: string;
+}

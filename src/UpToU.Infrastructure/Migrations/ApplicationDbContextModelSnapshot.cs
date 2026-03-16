@@ -384,6 +384,46 @@ namespace UpToU.Infrastructure.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BadgeImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LabelVi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ScoreThreshold")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CategoryId", "Tier")
+                        .IsUnique();
+
+                    b.ToTable("CategoryBadges");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.CategoryScoreType", b =>
                 {
                     b.Property<int>("Id")
@@ -821,6 +861,9 @@ namespace UpToU.Infrastructure.Migrations
                     b.Property<bool>("IsPublish")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("MaxQuestionLimit")
+                        .HasColumnType("int");
+
                     b.Property<int?>("MaxScoreTypeId")
                         .HasColumnType("int");
 
@@ -1032,9 +1075,26 @@ namespace UpToU.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BranchWeights")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ChoiceCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Color")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("FeedbackVi")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int?>("NextNodeId")
                         .HasColumnType("int");
@@ -1233,6 +1293,36 @@ namespace UpToU.Infrastructure.Migrations
                     b.HasIndex("UserId", "BanType");
 
                     b.ToTable("UserBans");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.UserCategoryBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AwardedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BadgeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BadgeId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "BadgeId")
+                        .IsUnique();
+
+                    b.ToTable("UserCategoryBadges");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.UserReward", b =>
@@ -1452,6 +1542,17 @@ namespace UpToU.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.CategoryScoreType", b =>
@@ -1685,6 +1786,25 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("UpToU.Core.Entities.UserCategoryBadge", b =>
+                {
+                    b.HasOne("UpToU.Core.Entities.CategoryBadge", "Badge")
+                        .WithMany("UserBadges")
+                        .HasForeignKey("BadgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UpToU.Core.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Badge");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("UpToU.Core.Entities.UserReward", b =>
                 {
                     b.HasOne("UpToU.Core.Entities.RewardItem", "RewardItem")
@@ -1770,6 +1890,11 @@ namespace UpToU.Infrastructure.Migrations
                     b.Navigation("ScoreTypes");
 
                     b.Navigation("Stories");
+                });
+
+            modelBuilder.Entity("UpToU.Core.Entities.CategoryBadge", b =>
+                {
+                    b.Navigation("UserBadges");
                 });
 
             modelBuilder.Entity("UpToU.Core.Entities.Comment", b =>

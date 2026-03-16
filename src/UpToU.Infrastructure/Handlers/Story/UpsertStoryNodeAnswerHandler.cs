@@ -21,17 +21,35 @@ public class UpsertStoryNodeAnswerHandler : IRequestHandler<UpsertStoryNodeAnswe
             .FirstOrDefaultAsync(ct);
         if (node is null) return Result<StoryNodeAnswerDto>.NotFound("Node not found.");
 
-        // Validate answer count (max 5 per node)
+        const int MaxAnswersPerNode = 5;
         if (!request.Id.HasValue)
         {
             var count = await _db.StoryNodeAnswers.CountAsync(a => a.StoryNodeId == request.StoryNodeId, ct);
-            if (count >= 5)
-                return Result<StoryNodeAnswerDto>.Failure("A node cannot have more than 5 answers.");
+            if (count >= MaxAnswersPerNode)
+                return Result<StoryNodeAnswerDto>.Failure($"A node cannot have more than {MaxAnswersPerNode} answers.");
         }
 
-        // Validate NextNodeId belongs to the same StoryDetail
-        if (request.NextNodeId.HasValue)
+        // Validate BranchWeights — if provided, all keys must be valid node IDs in the same StoryDetail
+        if (request.BranchWeights.Count > 0)
         {
+            if (request.BranchWeights.Values.Any(w => w <= 0))
+                return Result<StoryNodeAnswerDto>.Failure("All branch weights must be positive integers.");
+
+            foreach (var key in request.BranchWeights.Keys)
+            {
+                if (!int.TryParse(key, out _))
+                    return Result<StoryNodeAnswerDto>.Failure($"BranchWeights key '{key}' is not a valid node ID.");
+            }
+
+            var targetIds = request.BranchWeights.Keys.Select(int.Parse).ToList();
+            var validCount = await _db.StoryNodes.CountAsync(
+                n => targetIds.Contains(n.Id) && n.StoryDetailId == node.StoryDetailId, ct);
+            if (validCount != targetIds.Distinct().Count())
+                return Result<StoryNodeAnswerDto>.Failure("All BranchWeights node IDs must belong to the same story revision.");
+        }
+        else if (request.NextNodeId.HasValue)
+        {
+            // Validate deterministic NextNodeId
             var nextExists = await _db.StoryNodes.AnyAsync(
                 n => n.Id == request.NextNodeId.Value && n.StoryDetailId == node.StoryDetailId, ct);
             if (!nextExists)
@@ -41,8 +59,8 @@ public class UpsertStoryNodeAnswerHandler : IRequestHandler<UpsertStoryNodeAnswe
         StoryNodeAnswer answer;
         if (request.Id.HasValue)
         {
-            answer = await _db.StoryNodeAnswers.FirstOrDefaultAsync(a => a.Id == request.Id.Value, ct)
-                ?? throw new KeyNotFoundException($"Answer {request.Id} not found.");
+            answer = await _db.StoryNodeAnswers.FirstOrDefaultAsync(a => a.Id == request.Id.Value, ct);
+            if (answer is null) return Result<StoryNodeAnswerDto>.NotFound($"Answer {request.Id} not found.");
         }
         else
         {
@@ -51,14 +69,21 @@ public class UpsertStoryNodeAnswerHandler : IRequestHandler<UpsertStoryNodeAnswe
         }
 
         answer.Text          = request.Text;
+        answer.TextVi        = request.TextVi;
         answer.PointsAwarded = request.PointsAwarded;
-        answer.NextNodeId    = request.NextNodeId;
+        answer.ScoreDeltas   = request.ScoreDeltas;
+        answer.NextNodeId    = request.BranchWeights.Count > 0 ? null : request.NextNodeId;
+        answer.BranchWeights = request.BranchWeights;
+        answer.Feedback      = request.Feedback;
+        answer.FeedbackVi    = request.FeedbackVi;
         answer.Color         = request.Color;
         answer.SortOrder     = request.SortOrder;
 
         await _db.SaveChangesAsync(ct);
 
         return Result<StoryNodeAnswerDto>.Success(new StoryNodeAnswerDto(
-            answer.Id, answer.Text, answer.PointsAwarded, answer.NextNodeId, answer.Color, answer.SortOrder));
+            answer.Id, answer.Text, answer.TextVi, answer.PointsAwarded, answer.ScoreDeltas,
+            answer.NextNodeId, answer.BranchWeights, answer.Feedback, answer.FeedbackVi,
+            answer.Color, answer.SortOrder));
     }
 }

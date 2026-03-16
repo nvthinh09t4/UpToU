@@ -13,7 +13,7 @@ A full-stack storytelling platform where contributors create and submit stories,
 | Auth | ASP.NET Core Identity + JWT Bearer + HttpOnly refresh tokens |
 | Client (reader) | React 18 + Vite + Tailwind CSS |
 | CRM (staff) | React 18 + Vite + MUI (Material UI) |
-| Background jobs | Quartz.NET |
+| Background jobs | Hangfire |
 | Cloud | Azure App Service, Blob Storage, Service Bus |
 
 ---
@@ -130,6 +130,74 @@ After running the seeder, the following accounts are available (password: `12345
 | `npm run dev` | Start frontend dev server |
 | `npm test` | Run frontend tests |
 | `npx eslint . --fix` | Auto-fix JS/TS lint errors |
+| `npm run test:e2e` | Run all E2E tests (from project root) |
+| `npm run test:e2e:client` | Run client E2E tests only |
+| `npm run test:e2e:crm` | Run CRM E2E tests only |
+| `npm run test:e2e:headed` | Run E2E tests in headed mode |
+| `npm run test:e2e:ui` | Open Playwright interactive UI |
+| `npm run test:e2e:report` | Open last Playwright HTML report |
+
+---
+
+## E2E Testing
+
+End-to-end tests are located in the `/e2e` directory and use [Playwright](https://playwright.dev/). They cover the **client** (reader site) and **CRM** (staff site) — not the API itself.
+
+### Prerequisites
+
+The API must be running before the tests execute:
+
+```bash
+cd src/UpToU.API
+dotnet watch run   # http://localhost:5070
+```
+
+### Setup
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+```
+
+### Run all tests
+
+```bash
+cd e2e
+npm test                  # all tests (client + CRM)
+npm run test:client       # client tests only
+npm run test:crm          # CRM tests only
+npm run test:headed       # watch tests run in a real browser
+npm run test:ui           # Playwright interactive UI
+npm run report            # open the last HTML report
+```
+
+> **Note:** The dev servers (ports 5173 and 5174) start automatically when `CI` is not set. If they are already running, Playwright will reuse them.
+
+### Test coverage
+
+| Area | Spec file | What is tested |
+|---|---|---|
+| Client – Auth | `client/auth.spec.ts` | Login, validation, error states, registration, logout |
+| Client – Home | `client/home.spec.ts` | Hero, stats, categories, CTA, navigation |
+| Client – Stories | `client/stories.spec.ts` | Category page, story page, bookmarks, notifications, progress, rewards |
+| Client – Dashboard | `client/dashboard.spec.ts` | Auth guard, user profile, achievements, credits, streak |
+| Client – Leaderboard | `client/leaderboard.spec.ts` | Page load, time-period tabs, rank tiers |
+| CRM – Auth | `crm/auth.spec.ts` | Login, invalid credentials, auth guard, logout |
+| CRM – Dashboard | `crm/dashboard.spec.ts` | Greeting, KPI cards, sidebar nav, recent activity |
+| CRM – Stories | `crm/stories.spec.ts` | List, search, Add button, status tabs, import/export, interactive editor |
+| CRM – Categories | `crm/categories.spec.ts` | List, search, Add dialog, Users, Roles, Reports, Rewards pages |
+
+### Test accounts
+
+All seed accounts use password `123456aA@`:
+
+| Account | Role | Used in |
+|---|---|---|
+| `admin@uptou.com` | Admin | Client + CRM admin tests |
+| `contributor@uptou.com` | Contributor | CRM contributor tests |
+
+Auth state is saved under `e2e/.auth/` (gitignored) after the setup steps run.
 
 ---
 
@@ -137,8 +205,10 @@ After running the seeder, the following accounts are available (password: `12345
 
 - **Story workflow** — Draft → Submit → Review (Approve / Reject) → Publish
 - **Interactive stories** — Node-based branching story editor in the CRM
-- **Gamification** — Credits, leaderboard, rewards, and badges for reader engagement
+- **Gamification** — Credits, leaderboard, rewards, daily streaks, and badges for reader engagement
+- **Story ratings** — 1–5 star ratings with optional comments after completing a story
+- **Personalized recommendations** — Rule-based engine suggests unseen stories based on the user's top-earning categories
 - **Comments & reactions** — Threaded comments and emoji reactions on stories
 - **Ban system** — Admins can ban users with reason, duration, and category scope
 - **Session persistence** — JWT access tokens refreshed silently via HttpOnly cookie; CRM session survives page refresh
-- **Background jobs** — Scheduled story publishing; display-name expiry cleanup
+- **Background jobs** — Scheduled story publishing; display-name expiry cleanup; contributor champion assignment

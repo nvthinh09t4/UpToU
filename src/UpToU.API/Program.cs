@@ -145,13 +145,40 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() { Title = "UpToU API", Version = "v1" });
+    // ── One Swagger document per logical tab ──────────────────────────────────
+    options.SwaggerDoc("auth",          new() { Title = "🔐 Auth",              Version = "v1", Description = "Authentication, registration, token refresh, social login" });
+    options.SwaggerDoc("stories",       new() { Title = "📖 Stories",           Version = "v1", Description = "Articles, interactive stories, ratings & recommendations" });
+    options.SwaggerDoc("categories",    new() { Title = "🗂 Categories",        Version = "v1", Description = "Category management, score types & badges" });
+    options.SwaggerDoc("users",         new() { Title = "👤 Users",             Version = "v1", Description = "User profiles, credits & reading progress" });
+    options.SwaggerDoc("social",        new() { Title = "💬 Social",            Version = "v1", Description = "Reactions, comments, votes, bookmarks & leaderboard" });
+    options.SwaggerDoc("notifications", new() { Title = "🔔 Notifications",     Version = "v1", Description = "User notification feed" });
+    options.SwaggerDoc("admin",         new() { Title = "⚙ Admin",             Version = "v1", Description = "Admin panel, reports & background jobs" });
+
+    // ── Route each controller to its document ─────────────────────────────────
+    options.DocInclusionPredicate((docName, api) =>
+    {
+        api.ActionDescriptor.RouteValues.TryGetValue("controller", out var ctrl);
+        ctrl ??= "";
+        return docName switch
+        {
+            "auth"          => ctrl == "Auth",
+            "stories"       => ctrl is "Story" or "InteractiveStory",
+            "categories"    => ctrl == "Category",
+            "users"         => ctrl is "User" or "Credit" or "Progress",
+            "social"        => ctrl is "Reaction" or "Comment" or "Leaderboard",
+            "notifications" => ctrl == "Notification",
+            "admin"         => ctrl is "Admin" or "Reports" or "Jobs",
+            _               => false,
+        };
+    });
+
+    // ── Security (shared across all docs) ─────────────────────────────────────
     options.AddSecurityDefinition("Bearer", new()
     {
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        Description = "Enter your JWT access token"
+        Description = "Paste your JWT access token (use the token bar at the top of the page)",
     });
     options.AddSecurityRequirement(new()
     {
@@ -211,8 +238,31 @@ app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseStaticFiles();
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        // ── One tab per document ──────────────────────────────────────────────
+        c.SwaggerEndpoint("/swagger/auth/swagger.json",          "🔐 Auth");
+        c.SwaggerEndpoint("/swagger/stories/swagger.json",       "📖 Stories");
+        c.SwaggerEndpoint("/swagger/categories/swagger.json",    "🗂 Categories");
+        c.SwaggerEndpoint("/swagger/users/swagger.json",         "👤 Users");
+        c.SwaggerEndpoint("/swagger/social/swagger.json",        "💬 Social");
+        c.SwaggerEndpoint("/swagger/notifications/swagger.json", "🔔 Notifications");
+        c.SwaggerEndpoint("/swagger/admin/swagger.json",         "⚙ Admin");
+
+        // ── UX: always in execute mode, token persists across refreshes ───────
+        c.EnableTryItOutByDefault();
+        c.DisplayRequestDuration();
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+        c.DefaultModelExpandDepth(-1);
+        c.EnableFilter();
+        c.DocumentTitle = "UpToU API";
+
+        // ── Inject custom token bar + tab styles ──────────────────────────────
+        c.InjectStylesheet("/swagger-ui/custom.css");
+        c.InjectJavascript("/swagger-ui/custom.js");
+    });
 }
 
 app.UseHttpsRedirection();

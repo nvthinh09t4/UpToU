@@ -28,4 +28,21 @@ public class StoryNodeAnswer
 
     public string? Color { get; set; }   // CSS hex color for the button
     public int SortOrder { get; set; }
+
+    /// <summary>Total number of times any player has selected this answer.</summary>
+    public int ChoiceCount { get; set; }
+
+    /// <summary>English explanation shown in the feedback popup after the player selects this answer.</summary>
+    public string? Feedback { get; set; }
+
+    /// <summary>Vietnamese translation of <see cref="Feedback"/>.</summary>
+    public string? FeedbackVi { get; set; }
+
+    /// <summary>
+    /// Weighted probability branches for random next-node selection.
+    /// Keys = target NodeId (as string), Values = relative integer weight.
+    /// Empty dictionary = deterministic (use <see cref="NextNodeId"/> directly).
+    /// When populated, <see cref="NextNodeId"/> should be null.
+    /// </summary>
+    public Dictionary<string, int> BranchWeights { get; set; } = new();
 }
