@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const ADMIN_AUTH    = path.join(__dirname, '../.auth/crm-admin.json')
-const CONTRIB_AUTH  = path.join(__dirname, '../.auth/crm-contributor.json')
+import { ACCOUNTS, loginCrm } from '../helpers/auth'
 
 // ── Stories list ──────────────────────────────────────────────────────────────
 
 test.describe('CRM / Stories Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('stories page loads at /stories', async ({ page }) => {
     await page.goto('/stories')
@@ -52,7 +51,9 @@ test.describe('CRM / Stories Page', () => {
 // ── Interactive story editor ──────────────────────────────────────────────────
 
 test.describe('CRM / Interactive Story Editor', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('editor page loads for a valid story ID', async ({ page }) => {
     // Navigate to node editor for the first interactive story (ID from seeder)
@@ -67,7 +68,9 @@ test.describe('CRM / Interactive Story Editor', () => {
 // ── Contributor role access ───────────────────────────────────────────────────
 
 test.describe('CRM / Stories (contributor)', () => {
-  test.use({ storageState: CONTRIB_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.contributor.email, ACCOUNTS.contributor.password)
+  })
 
   test('contributor can see stories list', async ({ page }) => {
     await page.goto('/stories')

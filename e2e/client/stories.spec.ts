@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const AUTH_FILE = path.join(__dirname, '../.auth/client-user.json')
+import { ACCOUNTS, loginClient } from '../helpers/auth'
 
 // ── Category page (public) ────────────────────────────────────────────────────
 
@@ -56,7 +54,9 @@ test.describe('Client / Story Page (Article)', () => {
 // ── Authenticated story interactions ─────────────────────────────────────────
 
 test.describe('Client / Story Page (authenticated)', () => {
-  test.use({ storageState: AUTH_FILE })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('claim read credits button is present', async ({ page }) => {
     await page.goto('/stories/1')

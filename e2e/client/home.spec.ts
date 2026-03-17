@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { ACCOUNTS, loginClient } from '../helpers/auth'
 
 test.describe('Client / Home Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -32,12 +33,14 @@ test.describe('Client / Home Page', () => {
 
   test('CTA section at bottom is visible', async ({ page }) => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-    await expect(page.getByText(/Join Now/i)).toBeVisible()
+    // Multiple elements may contain "Join Now" — assert first match is visible
+    await expect(page.getByText(/Join Now/i).first()).toBeVisible()
   })
 
   test('header navigation links are present', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /leaderboard/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: /sign in/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /leaderboard/i }).first()).toBeVisible()
+    // AppHeader "Sign In" link (there may also be one in the CTA footer) — use first
+    await expect(page.getByRole('link', { name: /sign in/i }).first()).toBeVisible()
   })
 
   test('Start Reading link points to register when unauthenticated', async ({ page }) => {
@@ -48,7 +51,9 @@ test.describe('Client / Home Page', () => {
 })
 
 test.describe('Client / Home Page (authenticated)', () => {
-  test.use({ storageState: '.auth/client-user.json' })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('recommendation panel is visible when logged in', async ({ page }) => {
     await page.goto('/')

@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test'
 import { ACCOUNTS, loginClient } from '../helpers/auth'
-import path from 'path'
-
-const AUTH_FILE = path.join(__dirname, '../.auth/client-user.json')
 
 // ── Login page ────────────────────────────────────────────────────────────────
 
@@ -69,7 +66,9 @@ test.describe('Client / Register', () => {
 // ── Authenticated: logout ─────────────────────────────────────────────────────
 
 test.describe('Client / Logout', () => {
-  test.use({ storageState: AUTH_FILE })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('user can log out via header menu', async ({ page }) => {
     await page.goto('/')
@@ -78,7 +77,7 @@ test.describe('Client / Logout', () => {
     await expect(userBtn).toBeVisible({ timeout: 30_000 })
     await userBtn.click()
     // Logout button is a plain button, not a menuitem
-    const logoutBtn = page.getByRole('button', { name: /logout|sign out/i })
+    const logoutBtn = page.getByRole('button', { name: /log.?out|sign out/i })
     await expect(logoutBtn).toBeVisible()
     await logoutBtn.click()
     await expect(page).toHaveURL(/\/(login|$)/, { timeout: 10_000 })

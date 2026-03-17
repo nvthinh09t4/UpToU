@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test'
 import { ACCOUNTS, loginCrm } from '../helpers/auth'
-import path from 'path'
-
-const ADMIN_AUTH = path.join(__dirname, '../.auth/crm-admin.json')
 
 // ── Login page ────────────────────────────────────────────────────────────────
 
@@ -53,7 +50,9 @@ test.describe('CRM / Auth Guard', () => {
 // ── Logout ───────────────────────────────────────────────────────────────────
 
 test.describe('CRM / Logout', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('logout clears session and redirects to login', async ({ page }) => {
     await page.goto('/')

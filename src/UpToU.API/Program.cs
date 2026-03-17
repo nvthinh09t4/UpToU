@@ -134,8 +134,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddRateLimiter(options =>
     options.AddFixedWindowLimiter("AuthPolicy", cfg =>
     {
-        cfg.PermitLimit = 10;
-        cfg.Window = TimeSpan.FromMinutes(1);
+        cfg.PermitLimit = builder.Configuration.GetValue("RateLimiting:AuthPolicy:PermitLimit", 10);
+        cfg.Window = TimeSpan.FromSeconds(builder.Configuration.GetValue("RateLimiting:AuthPolicy:WindowSeconds", 60));
         cfg.QueueLimit = 0;
         cfg.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     }));

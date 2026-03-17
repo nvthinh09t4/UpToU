@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const ADMIN_AUTH = path.join(__dirname, '../.auth/crm-admin.json')
+import { ACCOUNTS, loginCrm } from '../helpers/auth'
 
 test.describe('CRM / Dashboard', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('dashboard page loads without error', async ({ page }) => {
     await page.goto('/')
@@ -33,9 +33,9 @@ test.describe('CRM / Dashboard', () => {
     await page.goto('/')
     await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 })
     // Sidebar uses ListItemButton (role=button), not <a> links
-    await expect(page.getByRole('button', { name: /stories/i })).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: /categories/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /users/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /stories/i }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: /categories/i }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /users/i }).first()).toBeVisible()
   })
 
   test('recent users or recent stories list renders', async ({ page }) => {

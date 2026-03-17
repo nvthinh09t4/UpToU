@@ -11,7 +11,9 @@
       "Bash(\"C:/temp/hashgen/Program.cs\":*)",
       "Bash(__NEW_LINE_1fb1495a19b335c1__ cat)",
       "Bash(\"C:/temp/hashgen/hashgen.csproj\":*)",
-      "Bash(__NEW_LINE_1fb1495a19b335c1__ cd \"C:/temp/hashgen\")"
+      "Bash(__NEW_LINE_1fb1495a19b335c1__ cd \"C:/temp/hashgen\")",
+      "Bash(grep -r \"CategoryScoreType\\\\|admin.*category\\\\|category.*admin\" /d/Source/UpToU/client/src --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"BranchProbability\\\\|probability\\\\|random.*branch\\\\|branch.*random\" /d/Source/UpToU/src --include=*.cs)"
     ]
   }
 }

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const ADMIN_AUTH = path.join(__dirname, '../.auth/crm-admin.json')
+import { ACCOUNTS, loginCrm } from '../helpers/auth'
 
 test.describe('CRM / Categories Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('categories page loads at /categories', async ({ page }) => {
     await page.goto('/categories')
@@ -49,7 +49,9 @@ test.describe('CRM / Categories Page', () => {
 // ── Users page ────────────────────────────────────────────────────────────────
 
 test.describe('CRM / Users Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('users page loads at /users', async ({ page }) => {
     await page.goto('/users')
@@ -68,7 +70,9 @@ test.describe('CRM / Users Page', () => {
 // ── Roles page ────────────────────────────────────────────────────────────────
 
 test.describe('CRM / Roles Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('roles page loads at /roles', async ({ page }) => {
     await page.goto('/roles')
@@ -81,7 +85,9 @@ test.describe('CRM / Roles Page', () => {
 // ── Reports page ──────────────────────────────────────────────────────────────
 
 test.describe('CRM / Reports Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('reports page loads at /reports', async ({ page }) => {
     await page.goto('/reports')
@@ -94,7 +100,9 @@ test.describe('CRM / Reports Page', () => {
 // ── Rewards admin page ────────────────────────────────────────────────────────
 
 test.describe('CRM / Rewards Admin Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('rewards admin page loads at /rewards', async ({ page }) => {
     await page.goto('/rewards')
