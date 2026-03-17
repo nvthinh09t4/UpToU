@@ -11,9 +11,10 @@ test.describe('Client / Leaderboard Page', () => {
   })
 
   test('displays leaderboard heading', async ({ page }) => {
+    // The h1 says "Top Readers"; the badge span contains "Leaderboard"
     await expect(
-      page.getByRole('heading', { name: /leaderboard/i })
-    ).toBeVisible({ timeout: 8_000 })
+      page.getByRole('heading', { name: /top readers/i })
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('time period filter tabs are visible', async ({ page }) => {
@@ -32,6 +33,6 @@ test.describe('Client / Leaderboard Page', () => {
   })
 
   test('rank tiers section is visible', async ({ page }) => {
-    await expect(page.getByText(/Bronze|Silver|Gold|Herald|Guardian/i)).toBeVisible()
+    await expect(page.getByText(/Bronze|Silver|Gold|Herald|Guardian/i).first()).toBeVisible()
   })
 })

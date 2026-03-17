@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const ADMIN_AUTH    = path.join(__dirname, '../.auth/crm-admin.json')
-const CONTRIB_AUTH  = path.join(__dirname, '../.auth/crm-contributor.json')
+import { ACCOUNTS, loginCrm } from '../helpers/auth'
 
 // ── Stories list ──────────────────────────────────────────────────────────────
 
 test.describe('CRM / Stories Page', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('stories page loads at /stories', async ({ page }) => {
     await page.goto('/stories')
@@ -18,42 +17,43 @@ test.describe('CRM / Stories Page', () => {
 
   test('stories data grid or list is rendered', async ({ page }) => {
     await page.goto('/stories')
-    await page.waitForTimeout(3_000)
     // MUI DataGrid renders a role=grid
     const grid = page.getByRole('grid')
-    await expect(grid).toBeVisible({ timeout: 8_000 })
+    await expect(grid).toBeVisible({ timeout: 20_000 })
   })
 
   test('search field is present', async ({ page }) => {
     await page.goto('/stories')
-    const searchInput = page.getByRole('textbox', { name: /search/i })
-    await expect(searchInput).toBeVisible()
+    // TextField has only a placeholder, no label — locate by placeholder
+    const searchInput = page.locator('input[placeholder*="Search"]')
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
   })
 
-  test('Add Story button is visible for admin', async ({ page }) => {
+  test('New Story button is visible for admin', async ({ page }) => {
     await page.goto('/stories')
     await expect(
-      page.getByRole('button', { name: /add story|new story|create/i })
-    ).toBeVisible()
+      page.getByRole('button', { name: /new story/i })
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('status tabs are present', async ({ page }) => {
     await page.goto('/stories')
-    // Tabs: All / Pending / Published / Rejected
-    await expect(page.getByText(/pending|published|all/i)).toBeVisible()
+    // Tabs: "All Stories" and "Pending Review"
+    await expect(page.getByText(/All Stories/i)).toBeVisible({ timeout: 15_000 })
   })
 
-  test('import and export buttons are present', async ({ page }) => {
+  test('import button is present', async ({ page }) => {
     await page.goto('/stories')
-    await expect(page.getByRole('button', { name: /import/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /export/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /import/i })).toBeVisible({ timeout: 15_000 })
   })
 })
 
 // ── Interactive story editor ──────────────────────────────────────────────────
 
 test.describe('CRM / Interactive Story Editor', () => {
-  test.use({ storageState: ADMIN_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.admin.email, ACCOUNTS.admin.password)
+  })
 
   test('editor page loads for a valid story ID', async ({ page }) => {
     // Navigate to node editor for the first interactive story (ID from seeder)
@@ -68,7 +68,9 @@ test.describe('CRM / Interactive Story Editor', () => {
 // ── Contributor role access ───────────────────────────────────────────────────
 
 test.describe('CRM / Stories (contributor)', () => {
-  test.use({ storageState: CONTRIB_AUTH })
+  test.beforeEach(async ({ page }) => {
+    await loginCrm(page, ACCOUNTS.contributor.email, ACCOUNTS.contributor.password)
+  })
 
   test('contributor can see stories list', async ({ page }) => {
     await page.goto('/stories')

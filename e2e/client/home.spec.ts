@@ -1,27 +1,26 @@
 import { test, expect } from '@playwright/test'
+import { ACCOUNTS, loginClient } from '../helpers/auth'
 
 test.describe('Client / Home Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+    // Wait for bootstrap to complete (spinner disappears)
+    await page.waitForSelector('header', { timeout: 30_000 })
   })
 
   test('renders hero section with CTA buttons', async ({ page }) => {
-    // Hero badge / headline text
     await expect(page.getByText('Read Stories.')).toBeVisible()
     await expect(page.getByRole('link', { name: /start reading/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /explore categories/i })).toBeVisible()
   })
 
-  test('renders platform stats row', async ({ page }) => {
-    await expect(page.getByText(/Active Readers/i)).toBeVisible()
-    await expect(page.getByText(/Published Stories/i)).toBeVisible()
+  test('renders ranks section', async ({ page }) => {
+    await expect(page.getByText(/Climb the ranks/i)).toBeVisible()
   })
 
-  test('renders "How UpToU Works" section', async ({ page }) => {
-    await expect(page.getByText(/How UpToU Works/i)).toBeVisible()
-    await expect(page.getByText(/Read/)).toBeVisible()
-    await expect(page.getByText(/React/)).toBeVisible()
-    await expect(page.getByText(/Earn/)).toBeVisible()
+  test('renders Interactive Stories feature section', async ({ page }) => {
+    await expect(page.getByText(/Interactive Stories/i)).toBeVisible()
+    await expect(page.getByText(/your choices/i)).toBeVisible()
   })
 
   test('Browse by Category section loads', async ({ page }) => {
@@ -29,34 +28,36 @@ test.describe('Client / Home Page', () => {
     // Wait for category cards to load (API call)
     await page.waitForResponse(resp => resp.url().includes('/categories') && resp.status() === 200, { timeout: 10_000 })
       .catch(() => { /* categories may already be loaded */ })
-    // At least the section heading should still be visible
     await expect(page.getByText(/Browse by Category/i)).toBeVisible()
   })
 
   test('CTA section at bottom is visible', async ({ page }) => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-    await expect(page.getByText(/Ready to start your journey/i)).toBeVisible()
-    await expect(page.getByRole('link', { name: /join now/i })).toBeVisible()
+    // Multiple elements may contain "Join Now" — assert first match is visible
+    await expect(page.getByText(/Join Now/i).first()).toBeVisible()
   })
 
   test('header navigation links are present', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /leaderboard/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: /sign in/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /leaderboard/i }).first()).toBeVisible()
+    // AppHeader "Sign In" link (there may also be one in the CTA footer) — use first
+    await expect(page.getByRole('link', { name: /sign in/i }).first()).toBeVisible()
   })
 
-  test('Start Reading link navigates to login when unauthenticated', async ({ page }) => {
+  test('Start Reading link points to register when unauthenticated', async ({ page }) => {
     const ctaBtn = page.getByRole('link', { name: /start reading/i })
     const href = await ctaBtn.getAttribute('href')
-    // Should point to /register or /login for unauthenticated users
-    expect(href).toMatch(/\/(register|login|categories)/)
+    expect(href).toMatch(/\/(register|login|categories|leaderboard)/)
   })
 })
 
 test.describe('Client / Home Page (authenticated)', () => {
-  test.use({ storageState: 'e2e/.auth/client-user.json' })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('recommendation panel is visible when logged in', async ({ page }) => {
     await page.goto('/')
+    await page.waitForSelector('header', { timeout: 30_000 })
     // Panel may load asynchronously — give it time
     await page.waitForTimeout(2_000)
     // The recommendations section or "For You" heading

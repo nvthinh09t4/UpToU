@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowRight, Trophy, Coins, BookOpen, Zap, Play,
+  ArrowRight, Trophy, Coins, BookOpen, Zap, Play, Sparkles,
 } from 'lucide-react';
 import { categoryApi } from '../services/categoryApi';
 import { leaderboardApi } from '../services/leaderboardApi';

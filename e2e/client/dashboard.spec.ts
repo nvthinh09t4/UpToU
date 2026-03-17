@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import path from 'path'
-
-const AUTH_FILE = path.join(__dirname, '../.auth/client-user.json')
+import { ACCOUNTS, loginClient } from '../helpers/auth'
 
 test.describe('Client / Dashboard (authenticated)', () => {
-  test.use({ storageState: AUTH_FILE })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('redirects unauthenticated users to login', async ({ browser }) => {
     const ctx = await browser.newContext() // fresh context, no auth

@@ -1,22 +1,19 @@
 import { test, expect } from '@playwright/test'
 import { ACCOUNTS, loginClient } from '../helpers/auth'
-import path from 'path'
-
-const AUTH_FILE = path.join(__dirname, '../.auth/client-user.json')
 
 // ── Login page ────────────────────────────────────────────────────────────────
 
 test.describe('Client / Login', () => {
   test('login page renders correctly', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByLabel('Email')).toBeVisible()
+    await expect(page.locator('#email')).toBeVisible()
     await expect(page.locator('#password')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
   })
 
   test('shows error for invalid credentials', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel('Email').fill('wrong@example.com')
+    await page.locator('#email').fill('wrong@example.com')
     await page.locator('#password').fill('wrongpassword')
     await page.getByRole('button', { name: 'Sign In' }).click()
     // Error alert should appear
@@ -69,23 +66,20 @@ test.describe('Client / Register', () => {
 // ── Authenticated: logout ─────────────────────────────────────────────────────
 
 test.describe('Client / Logout', () => {
-  test.use({ storageState: AUTH_FILE })
+  test.beforeEach(async ({ page }) => {
+    await loginClient(page, ACCOUNTS.supervisor.email, ACCOUNTS.supervisor.password)
+  })
 
   test('user can log out via header menu', async ({ page }) => {
     await page.goto('/')
-    // Open user menu
-    const userBtn = page.getByRole('button', { name: /account|user|menu/i }).last()
-    if (await userBtn.isVisible()) {
-      await userBtn.click()
-      const logoutItem = page.getByRole('menuitem', { name: /sign out|logout/i })
-      if (await logoutItem.isVisible()) {
-        await logoutItem.click()
-        await expect(page).toHaveURL(/\/(login|$)/)
-      }
-    } else {
-      // Fallback: sign-out link
-      const signOutLink = page.getByRole('link', { name: /sign out|logout/i })
-      await expect(signOutLink).toBeVisible()
-    }
+    // Wait for bootstrap + auth to complete — the user menu button appears
+    const userBtn = page.getByRole('button', { name: /open user menu/i })
+    await expect(userBtn).toBeVisible({ timeout: 30_000 })
+    await userBtn.click()
+    // Logout button is a plain button, not a menuitem
+    const logoutBtn = page.getByRole('button', { name: /log.?out|sign out/i })
+    await expect(logoutBtn).toBeVisible()
+    await logoutBtn.click()
+    await expect(page).toHaveURL(/\/(login|$)/, { timeout: 10_000 })
   })
 })
